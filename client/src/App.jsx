@@ -88,39 +88,3 @@ export default function App() {
         </AnimatePresence>
     );
 }
-
-// Git History Polish Step 1
-// Git History Polish Step 2
-// Git History Polish Step 3
-// Git History Polish Step 4
-// Git History Polish Step 5
-// Git History Polish Step 6
-// Git History Polish Step 7
-// Git History Polish Step 8
-// Git History Polish Step 9
-// Git History Polish Step 10
-// Git History Polish Step 11
-// Git History Polish Step 12
-// Git History Polish Step 13
-// Git History Polish Step 14
-// Git History Polish Step 15
-// Git History Polish Step 16
-// Git History Polish Step 17
-// Git History Polish Step 18
-// Git History Polish Step 19
-// Git History Polish Step 20
-// Git History Polish Step 21
-// Git History Polish Step 22
-// Git History Polish Step 23
-// Git History Polish Step 24
-// Git History Polish Step 25
-// Git History Polish Step 26
-// Git History Polish Step 27
-// Git History Polish Step 28
-// Git History Polish Step 29
-// Git History Polish Step 30
-// Git History Polish Step 31
-// Git History Polish Step 32
-// Git History Polish Step 33
-// Git History Polish Step 34
-// Git History Polish Step 35

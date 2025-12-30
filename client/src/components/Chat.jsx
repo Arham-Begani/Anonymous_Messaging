@@ -204,9 +204,9 @@ export default function Chat({ socket }) {
                                 <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">Global Group</h2>
                                 <Shield size={10} className="text-[#444] hidden md:block" />
                             </div>
-                            <p className="text-[9px] text-[#666] protocol-text flex items-center gap-1.5">
-                                <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500 inline-block" />
-                                {onlineCount || 0} <span className="hidden xs:inline">Online</span>
+                            <p className="text-[11px] text-[#666] protocol-text flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
+                                <span className="text-white font-bold">{onlineCount || 0}</span> <span className="text-[#444] hidden xs:inline uppercase tracking-widest">Active Now</span>
                             </p>
                         </div>
                     </div>

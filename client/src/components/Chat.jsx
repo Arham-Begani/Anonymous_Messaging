@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe } from 'lucide-react';
+import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X } from 'lucide-react';
 import Sidebar from './Sidebar';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 export default function Chat({ socket }) {
     const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount } = useStore();
@@ -11,6 +12,8 @@ export default function Chat({ socket }) {
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [isTyping, setIsTyping] = useState(false);
     const typingTimeoutRef = useRef(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const inputRef = useRef(null);
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -103,6 +106,22 @@ export default function Chat({ socket }) {
                 setMessages(useStore.getState().messages.filter(m => m.id !== tempId));
             }
         });
+    };
+
+    const onEmojiClick = (emojiData) => {
+        const { selectionStart, selectionEnd } = inputRef.current;
+        const text = input;
+        const before = text.substring(0, selectionStart);
+        const after = text.substring(selectionEnd);
+        const newText = before + emojiData.emoji + after;
+        setInput(newText);
+
+        // Return focus and set cursor position after the emoji
+        setTimeout(() => {
+            inputRef.current.focus();
+            const newPos = selectionStart + emojiData.emoji.length;
+            inputRef.current.setSelectionRange(newPos, newPos);
+        }, 10);
     };
 
     const handleTyping = (typing) => {
@@ -308,10 +327,18 @@ export default function Chat({ socket }) {
                             <button type="button" className="p-2 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all">
                                 <Plus size={18} strokeWidth={2.5} />
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                className={`p-2 transition-all rounded-lg ${showEmojiPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                            >
+                                <Smile size={18} strokeWidth={2.5} />
+                            </button>
                         </div>
 
                         <input
-                            className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-xl pl-12 pr-14 py-4 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
+                            ref={inputRef}
+                            className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-xl pl-24 pr-14 py-4 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
                             placeholder="Type payload..."
                             value={input}
                             onChange={(e) => {
@@ -319,6 +346,47 @@ export default function Chat({ socket }) {
                                 handleTyping(true);
                             }}
                         />
+
+                        {/* Emoji Picker Popover */}
+                        <AnimatePresence>
+                            {showEmojiPicker && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowEmojiPicker(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute bottom-full left-0 mb-4 z-50"
+                                    >
+                                        <div className="border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-2xl shadow-black">
+                                            <EmojiPicker
+                                                onEmojiClick={onEmojiClick}
+                                                theme={Theme.DARK}
+                                                lazyLoadEmojis={true}
+                                                searchPlaceHolder="Search payload..."
+                                                width={350}
+                                                height={400}
+                                                skinTonesDisabled
+                                                previewConfig={{ showPreview: false }}
+                                                autoFocusSearch={false}
+                                                style={{
+                                                    '--epr-bg-color': '#0a0a0a',
+                                                    '--epr-category-label-bg-color': '#0a0a0a',
+                                                    '--epr-picker-border-color': 'transparent',
+                                                    '--epr-search-input-bg-color': '#111',
+                                                    '--epr-search-input-placeholder-color': '#444',
+                                                    '--epr-search-input-border-color': '#1A1A1A',
+                                                    '--epr-emoji-hover-color': '#1a1a1a'
+                                                }}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
 
                         <div className="absolute right-2 flex items-center">
                             <button

@@ -49,9 +49,7 @@ A high-performance, real-time anonymous messaging platform built with React, Nod
 
 To enter the chat, you need an account created by an administrator.
 
-### Admin Credentials (Initial)
-- **Username**: `admin`
-- **Password**: `admin123`
+
 
 ### Managing Users
 1. Login as **Admin**.

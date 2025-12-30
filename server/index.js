@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,13 +19,17 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
 // Helper for hashing
 function hashPassword(plain) {
   return crypto.createHash('sha256').update(plain).digest('hex');
 }
 
-// Database connection
-const db = new sqlite3.Database('./chat_users.db', (err) => {
+// Database connection - Use environment variable for persistent storage path on hosting
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'chat_users.db');
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('Error opening database', err.message);
   else console.log('Connected to SQLite database.');
 });
@@ -341,6 +346,11 @@ io.on('connection', (socket) => {
       console.error('[ADMIN] Ban user error:', e);
     }
   });
+});
+
+// For any request that doesn't match one above, send back React's index.html file
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 const PORT = process.env.PORT || 3001;

@@ -1,0 +1,10 @@
+{
+    "name": "anon-chat-root",
+    "version": "1.0.0",
+    "scripts": {
+        "install:all": "cd server && npm install && cd ../client && npm install",
+        "build:client": "cd client && npm run build",
+        "start:server": "cd server && node index.js",
+        "build": "npm run install:all && npm run build:client"
+    }
+}

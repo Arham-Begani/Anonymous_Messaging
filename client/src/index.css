@@ -44,3 +44,5 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

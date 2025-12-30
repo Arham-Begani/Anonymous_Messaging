@@ -14,6 +14,7 @@ export default function Chat({ socket }) {
     const typingTimeoutRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const inputRef = useRef(null);
+    const quickEmojis = ['❤️', '😂', '🙌', '🔥', '👏', '😮', '😢', '😍'];
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -321,83 +322,103 @@ export default function Chat({ socket }) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-5 bg-black z-10">
-                    <form onSubmit={handleSend} className="max-w-4xl mx-auto relative flex items-center group">
-                        <div className="absolute left-2 flex items-center gap-1">
-                            <button type="button" className="p-2 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all">
-                                <Plus size={18} strokeWidth={2.5} />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                className={`p-2 transition-all rounded-lg ${showEmojiPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
-                            >
-                                <Smile size={18} strokeWidth={2.5} />
-                            </button>
+                <div className="p-4 md:p-5 bg-black z-10 border-t border-[#111]">
+                    <div className="max-w-4xl mx-auto flex flex-col gap-3">
+                        {/* Quick Emojis Bar */}
+                        <div className="flex items-center gap-2 px-1 overflow-x-auto no-scrollbar">
+                            {quickEmojis.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => onEmojiClick({ emoji })}
+                                    className="text-lg hover:scale-125 transition-transform p-1 animate-in fade-in slide-in-from-bottom-1"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
                         </div>
 
-                        <input
-                            ref={inputRef}
-                            className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-xl pl-24 pr-14 py-4 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
-                            placeholder="Type payload..."
-                            value={input}
-                            onChange={(e) => {
-                                setInput(e.target.value);
-                                handleTyping(true);
-                            }}
-                        />
+                        <form onSubmit={handleSend} className="relative flex items-center group">
+                            <div className="absolute left-3 flex items-center">
+                                <button type="button" className="p-1.5 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all group/plus">
+                                    <Plus size={20} strokeWidth={2.5} className="group-hover/plus:rotate-90 transition-transform" />
+                                </button>
+                            </div>
 
-                        {/* Emoji Picker Popover */}
-                        <AnimatePresence>
-                            {showEmojiPicker && (
-                                <>
-                                    <div
-                                        className="fixed inset-0 z-40"
-                                        onClick={() => setShowEmojiPicker(false)}
-                                    />
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute bottom-full left-0 mb-4 z-50"
+                            <input
+                                ref={inputRef}
+                                className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl pl-12 pr-12 py-3.5 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
+                                placeholder="Type payload..."
+                                value={input}
+                                onChange={(e) => {
+                                    setInput(e.target.value);
+                                    handleTyping(true);
+                                }}
+                            />
+
+                            <div className="absolute right-3 flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    className={`p-1.5 transition-all rounded-lg ${showEmojiPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                >
+                                    <Smile size={20} strokeWidth={2.5} />
+                                </button>
+
+                                {input.trim() && (
+                                    <motion.button
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        type="submit"
+                                        className="p-1.5 text-white hover:text-blue-400 transition-colors"
                                     >
-                                        <div className="border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-2xl shadow-black">
-                                            <EmojiPicker
-                                                onEmojiClick={onEmojiClick}
-                                                theme={Theme.DARK}
-                                                lazyLoadEmojis={true}
-                                                searchPlaceHolder="Search payload..."
-                                                width={350}
-                                                height={400}
-                                                skinTonesDisabled
-                                                previewConfig={{ showPreview: false }}
-                                                autoFocusSearch={false}
-                                                style={{
-                                                    '--epr-bg-color': '#0a0a0a',
-                                                    '--epr-category-label-bg-color': '#0a0a0a',
-                                                    '--epr-picker-border-color': 'transparent',
-                                                    '--epr-search-input-bg-color': '#111',
-                                                    '--epr-search-input-placeholder-color': '#444',
-                                                    '--epr-search-input-border-color': '#1A1A1A',
-                                                    '--epr-emoji-hover-color': '#1a1a1a'
-                                                }}
-                                            />
-                                        </div>
-                                    </motion.div>
-                                </>
-                            )}
-                        </AnimatePresence>
+                                        <Send size={18} fill="currentColor" strokeWidth={3} />
+                                    </motion.button>
+                                )}
+                            </div>
 
-                        <div className="absolute right-2 flex items-center">
-                            <button
-                                type="submit"
-                                disabled={!input.trim()}
-                                className="p-2 bg-white text-black rounded-lg disabled:opacity-0 disabled:translate-x-2 transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_0_10px_rgba(255,255,255,0.2)]"
-                            >
-                                <Send size={16} fill="currentColor" strokeWidth={3} />
-                            </button>
-                        </div>
-                    </form>
+                            {/* Emoji Picker Popover */}
+                            <AnimatePresence>
+                                {showEmojiPicker && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={() => setShowEmojiPicker(false)}
+                                        />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute bottom-full right-0 mb-4 z-50"
+                                        >
+                                            <div className="border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-2xl shadow-black">
+                                                <EmojiPicker
+                                                    onEmojiClick={onEmojiClick}
+                                                    theme={Theme.DARK}
+                                                    lazyLoadEmojis={true}
+                                                    searchPlaceHolder="Search payload..."
+                                                    width={300}
+                                                    height={380}
+                                                    skinTonesDisabled
+                                                    previewConfig={{ showPreview: false }}
+                                                    autoFocusSearch={false}
+                                                    style={{
+                                                        '--epr-bg-color': '#0a0a0a',
+                                                        '--epr-category-label-bg-color': '#0a0a0a',
+                                                        '--epr-picker-border-color': 'transparent',
+                                                        '--epr-search-input-bg-color': '#111',
+                                                        '--epr-search-input-placeholder-color': '#444',
+                                                        '--epr-search-input-border-color': '#1A1A1A',
+                                                        '--epr-emoji-hover-color': '#1a1a1a'
+                                                    }}
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4,12 +4,13 @@ import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff,
 import { useStore } from '../store';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
-    const { user, logout, onlineCount, announcements, setAnnouncements } = useStore();
+    const { user, logout, onlineCount, announcements, setAnnouncements, notificationsEnabled, toggleNotifications } = useStore();
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showAppearance, setShowAppearance] = useState(false);
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManageUsers, setShowManageUsers] = useState(false);
-    const [notifications, setNotifications] = useState(true);
+    // const [notifications, setNotifications] = useState(true); // Removed local state
+
     const [announcementLoading, setAnnouncementLoading] = useState(false);
     const [showLaunchAnnouncement, setShowLaunchAnnouncement] = useState(false);
     const [newAnnouncement, setNewAnnouncement] = useState('');
@@ -143,12 +144,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <motion.div
                 initial={false}
                 animate={{
-                    width: isCollapsed ? 72 : 256,
-                    x: isOpen ? 0 : (window.innerWidth < 768 ? -256 : 0)
+                    width: isCollapsed ? 72 : 256
                 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className={`
-                    fixed md:relative h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans transition-colors
+                    fixed md:relative h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans transition-all duration-300 ease-in-out
                     ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 `}
                 style={{
@@ -665,14 +665,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 </div>
                                 <div className="flex items-center justify-between p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
                                     <div className="flex items-center gap-3">
-                                        {notifications ? <Bell size={18} className="text-[#888]" /> : <BellOff size={18} className="text-[#888]" />}
+                                        {notificationsEnabled ? <Bell size={18} className="text-[#888]" /> : <BellOff size={18} className="text-[#888]" />}
                                         <span className="text-sm text-white">Notifications</span>
                                     </div>
                                     <button
-                                        onClick={() => setNotifications(!notifications)}
-                                        className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${notifications ? 'bg-white justify-end' : 'bg-[#333] justify-start'}`}
+                                        onClick={toggleNotifications}
+                                        className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${notificationsEnabled ? 'bg-white justify-end' : 'bg-[#333] justify-start'}`}
                                     >
-                                        <div className={`w-4 h-4 rounded-full transition-colors ${notifications ? 'bg-black' : 'bg-[#666]'}`} />
+                                        <div className={`w-4 h-4 rounded-full transition-colors ${notificationsEnabled ? 'bg-black' : 'bg-[#666]'}`} />
                                     </button>
                                 </div>
                             </div>

@@ -50,11 +50,15 @@ export const useStore = create(persist((set) => ({
 
     tenorApiKey: '',
     setTenorApiKey: (key) => set({ tenorApiKey: key }),
+
+    notificationsEnabled: true,
+    toggleNotifications: () => set((state) => ({ notificationsEnabled: !state.notificationsEnabled })),
 }), {
     name: 'anon-chat-storage',
     partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        tenorApiKey: state.tenorApiKey
+        tenorApiKey: state.tenorApiKey,
+        notificationsEnabled: state.notificationsEnabled
     }),
 }));

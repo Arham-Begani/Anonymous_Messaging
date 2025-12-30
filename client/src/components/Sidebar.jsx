@@ -101,7 +101,7 @@ export default function Sidebar() {
                             <Disc size={18} className="text-white" />
                         </motion.div>
                         <div>
-                            <h1 className="font-bold text-white tracking-tight text-sm">AnonChat</h1>
+                            <h1 className="font-bold text-white tracking-tight text-sm">Backrow</h1>
                             <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
                         </div>
                     </div>

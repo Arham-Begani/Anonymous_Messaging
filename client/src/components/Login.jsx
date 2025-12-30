@@ -62,7 +62,7 @@ export default function Login({ onLogin }) {
                     <h1 className="text-3xl font-bold tracking-tighter text-white mb-2 uppercase">
                         System Access
                     </h1>
-                    <p className="text-muted text-[10px] protocol-text">Anonymous Protocol v2.5.0</p>
+                    <p className="text-muted text-[10px] protocol-text">Backrow Protocol v2.5.0</p>
                 </div>
 
                 <div className="glass-panel p-8 rounded-[2rem] border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">

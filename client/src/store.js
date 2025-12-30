@@ -40,6 +40,13 @@ export const useStore = create(persist((set) => ({
     setTypingUsers: (count) => set({ typingUsers: count }),
 
     setOnlineCount: (count) => set({ onlineCount: count }),
+
+    announcements: [],
+    setAnnouncements: (announcements) => set({ announcements }),
+    addAnnouncement: (ann) => set((state) => {
+        if (state.announcements.some(a => a.id === ann.id)) return state;
+        return { announcements: [ann, ...state.announcements] };
+    }),
 }), {
     name: 'anon-chat-storage',
     partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),

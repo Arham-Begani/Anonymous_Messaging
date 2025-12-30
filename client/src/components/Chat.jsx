@@ -51,12 +51,18 @@ export default function Chat({ socket }) {
             setOnlineCount(count);
         });
 
+        socket.on('newAnnouncement', (ann) => {
+            const { addAnnouncement } = useStore.getState();
+            addAnnouncement(ann);
+        });
+
         return () => {
             socket.off('messageHistory');
             socket.off('receiveMessage');
             socket.off('userTyping');
             socket.off('system_message');
             socket.off('userCount');
+            socket.off('newAnnouncement');
         };
     }, [socket, addMessage, setMessages, setTypingUsers]);
 

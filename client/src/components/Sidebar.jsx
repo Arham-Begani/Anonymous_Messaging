@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
-    const { user, logout, onlineCount } = useStore();
+    const { user, logout, onlineCount, announcements, setAnnouncements } = useStore();
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showAppearance, setShowAppearance] = useState(false);
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManageUsers, setShowManageUsers] = useState(false);
     const [notifications, setNotifications] = useState(true);
+    const [announcementLoading, setAnnouncementLoading] = useState(false);
+    const [showLaunchAnnouncement, setShowLaunchAnnouncement] = useState(false);
+    const [newAnnouncement, setNewAnnouncement] = useState('');
+    const [launchLoading, setLaunchLoading] = useState(false);
+    const [launchMessage, setLaunchMessage] = useState('');
 
     // Create user form
     const [newUsername, setNewUsername] = useState('');
@@ -85,6 +90,50 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         } catch (err) {
             console.error('Failed to delete user');
         }
+    };
+
+    const loadAnnouncements = async () => {
+        setAnnouncementLoading(true);
+        try {
+            const res = await fetch('/api/announcements');
+            const data = await res.json();
+            if (res.ok) setAnnouncements(data.announcements);
+        } catch (err) {
+            console.error('Failed to load announcements');
+        }
+        setAnnouncementLoading(false);
+    };
+
+    useEffect(() => {
+        loadAnnouncements();
+    }, []);
+
+    const handleLaunchAnnouncement = async (e) => {
+        e.preventDefault();
+        setLaunchLoading(true);
+        setLaunchMessage('');
+        try {
+            const res = await fetch('/api/admin/create-announcement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminToken: user.token,
+                    content: newAnnouncement
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setLaunchMessage('✓ Announcement Launched');
+                setNewAnnouncement('');
+                loadAnnouncements();
+                setTimeout(() => setShowLaunchAnnouncement(false), 1500);
+            } else {
+                setLaunchMessage(`✗ ${data.error}`);
+            }
+        } catch (err) {
+            setLaunchMessage('✗ Failed');
+        }
+        setLaunchLoading(false);
     };
     return (
         <>
@@ -221,6 +270,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                             >
                                 <Disc size={16} className="shrink-0" />
                                 {!isCollapsed && <span className="text-sm font-medium">Clear Chat</span>}
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setShowLaunchAnnouncement(true)}
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-yellow-500/70 hover:text-yellow-500 hover:bg-yellow-500/5 border border-transparent hover:border-yellow-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                title={isCollapsed ? "Launch Announcement" : ""}
+                            >
+                                <Megaphone size={16} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">Launch Announcement</span>}
                             </motion.button>
                         </>
                     )}
@@ -421,23 +481,91 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col max-h-[80vh]"
                         >
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center justify-between mb-6 shrink-0">
                                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Megaphone size={20} />
+                                    <Megaphone size={20} className="text-yellow-500" />
                                     Announcements
                                 </h2>
                                 <button onClick={() => setShowAnnouncements(false)} className="text-[#666] hover:text-white">
                                     <X size={20} />
                                 </button>
                             </div>
-                            <div className="space-y-4">
-                                <div className="p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
-                                    <p className="text-[10px] text-[#555] protocol-text mb-2">Dec 30, 2024</p>
-                                    <p className="text-sm text-[#ccc]">🎉 User accounts are now live! Each user has unique login.</p>
-                                </div>
+                            <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                                {announcementLoading ? (
+                                    <p className="text-[#444] text-[10px] protocol-text animate-pulse">Fetching records...</p>
+                                ) : announcements.length === 0 ? (
+                                    <p className="text-[#444] text-[10px] protocol-text text-center py-8">No broadcasts recorded.</p>
+                                ) : (
+                                    announcements.map(ann => (
+                                        <div key={ann.id} className="p-4 bg-[#111] rounded-xl border border-[#1A1A1A] hover:border-yellow-500/20 transition-colors group">
+                                            <p className="text-[9px] text-[#555] protocol-text mb-2 group-hover:text-yellow-500/50 transition-colors">
+                                                {new Date(ann.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                            </p>
+                                            <p className="text-sm text-[#ccc] leading-relaxed">{ann.content}</p>
+                                        </div>
+                                    ))
+                                )}
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Launch Announcement Modal */}
+            <AnimatePresence>
+                {showLaunchAnnouncement && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowLaunchAnnouncement(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Megaphone size={20} className="text-yellow-500" />
+                                    Launch Announcement
+                                </h2>
+                                <button onClick={() => setShowLaunchAnnouncement(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleLaunchAnnouncement} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Broadcast Content</label>
+                                    <textarea
+                                        value={newAnnouncement}
+                                        onChange={(e) => setNewAnnouncement(e.target.value)}
+                                        className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-500/50 min-h-[120px] resize-none"
+                                        placeholder="Type transmission..."
+                                        required
+                                    />
+                                </div>
+
+                                {launchMessage && (
+                                    <p className={`text-[10px] protocol-text ${launchMessage.startsWith('✓') ? 'text-green-500' : 'text-red-500'}`}>
+                                        {launchMessage}
+                                    </p>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={launchLoading}
+                                    className="w-full bg-yellow-500 text-black font-extrabold py-3 rounded-xl hover:bg-yellow-400 transition-all disabled:opacity-50 active:scale-[0.98]"
+                                >
+                                    {launchLoading ? 'Transmitting...' : 'Initiate Broadcast'}
+                                </button>
+                            </form>
                         </motion.div>
                     </motion.div>
                 )}

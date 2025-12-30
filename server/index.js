@@ -72,6 +72,13 @@ async function initDb() {
       banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
+      id SERIAL PRIMARY KEY,
+      content TEXT NOT NULL,
+      author_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // Seed admin account
     const adminHash = hashPassword('admin123');
     const adminAnonId = Math.floor(Math.random() * 9000) + 1000;
@@ -170,6 +177,49 @@ app.post('/api/admin/delete-user', async (req, res) => {
     await pool.query('DELETE FROM users WHERE id = $1 AND role != $2', [userId, 'admin']);
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 20');
+    res.json({ announcements: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+app.post('/api/admin/create-announcement', async (req, res) => {
+  const { adminToken, content } = req.body;
+  if (!content) return res.status(400).json({ error: 'Content required' });
+
+  try {
+    const adminHash = hashPassword(adminToken);
+    const adminRes = await pool.query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const admin = adminRes.rows[0];
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const result = await pool.query(
+      'INSERT INTO announcements (content, author_id) VALUES ($1, $2) RETURNING *',
+      [content, admin.id]
+    );
+
+    const announcement = result.rows[0];
+    io.emit('newAnnouncement', announcement);
+
+    // Also send a system message to the chat
+    io.to('global_chat').emit('receiveMessage', {
+      id: `sys-${Date.now()}`,
+      content: `📢 ANNOUNCEMENT: ${content}`,
+      senderId: 'SYSTEM',
+      timestamp: new Date().toISOString(),
+      type: 'system'
+    });
+
+    res.json({ success: true, announcement });
+  } catch (err) {
+    console.error('[ANNOUNCEMENT] Create error:', err);
     res.status(500).json({ error: 'Failed' });
   }
 });

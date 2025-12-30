@@ -10,7 +10,5 @@ services:
         value: 18.0.0
       - key: PORT
         value: 3001
-    disk:
-      name: chat-data
-      mountPath: /opt/render/project/src/server/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        sync: false # Set this in the Render Dashboard

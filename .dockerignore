@@ -1,0 +1,15 @@
+node_modules
+client/node_modules
+server/node_modules
+.git
+*.db
+*.db-journal
+.env
+client/dist
+.vscode
+.idea
+README.md
+walkthrough.md
+implementation_plan.md
+task.md
+make_commits.js

@@ -58,5 +58,21 @@ To enter the chat, you need an account created by an administrator.
 3. Use the **Admin Panel** to create new user accounts with custom usernames and passwords.
 4. Share the credentials with users to grant them access.
 
+## ☁️ Hosting on Fly.io (Recommended)
+
+Fly.io is the best platform for this app because it supports persistent volumes (for SQLite) and handles WebSockets efficiently.
+
+### Deployment Steps:
+1. **Install Fly CLI**: [Install instructions](https://fly.io/docs/hands-on/install-cli/)
+2. **Login**: `fly auth login`
+3. **Launch**: `fly launch --no-deploy`
+   - Select your region.
+   - Say **Yes** to setting up a database (Postgres/Redis) if needed, but we use SQLite, so you can say **No**.
+4. **Create Volume**: Create a persistent volume for the SQLite database:
+   ```bash
+   fly volumes create chat_data --region ewr --size 1
+   ```
+5. **Deploy**: `fly deploy`
+
 ---
 Built with focus on Visual Excellence and Privacy.

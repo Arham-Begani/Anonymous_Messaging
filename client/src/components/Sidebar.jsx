@@ -94,14 +94,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     width: isCollapsed ? 72 : 256,
                     x: isOpen ? 0 : (window.innerWidth < 768 ? -256 : 0)
                 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className={`
                     fixed md:relative h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans transition-colors
-                    ${isOpen ? 'shadow-[20px_0_50px_rgba(0,0,0,0.5)]' : ''}
+                    ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 `}
+                style={{
+                    left: 0,
+                    top: 0,
+                }}
             >
                 {/* Header */}
                 <div className={`p-6 pb-2 ${isCollapsed ? 'px-0 flex justify-center' : ''}`}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full">
                         <motion.div
                             whileHover={{ rotate: 360 }}
                             transition={{ duration: 0.5 }}
@@ -110,16 +115,21 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                             <Disc size={18} className="text-white" />
                         </motion.div>
                         {!isCollapsed && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                <h1 className="font-bold text-white tracking-tight text-sm">Backrow</h1>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
+                                <h1 className="font-bold text-white tracking-tight text-sm uppercase">Backrow</h1>
                                 <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
                             </motion.div>
                         )}
-                        {isOpen && (
-                            <button onClick={onClose} className="ml-auto p-1 md:hidden">
-                                <X size={20} className="text-[#444]" />
-                            </button>
-                        )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClose();
+                            }}
+                            className="p-2 -mr-2 md:hidden text-[#444] hover:text-white transition-colors"
+                            aria-label="Close sidebar"
+                        >
+                            <X size={20} />
+                        </button>
                     </div>
                 </div>
 

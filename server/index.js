@@ -286,7 +286,10 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get('/*', (req, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
+// Fallback to React app for any other routes
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

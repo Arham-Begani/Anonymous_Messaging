@@ -47,7 +47,14 @@ export const useStore = create(persist((set) => ({
         if (state.announcements.some(a => a.id === ann.id)) return state;
         return { announcements: [ann, ...state.announcements] };
     }),
+
+    tenorApiKey: '',
+    setTenorApiKey: (key) => set({ tenorApiKey: key }),
 }), {
     name: 'anon-chat-storage',
-    partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+    partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        tenorApiKey: state.tenorApiKey
+    }),
 }));

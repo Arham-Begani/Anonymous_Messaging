@@ -1,20 +1,48 @@
 import { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X } from 'lucide-react';
+import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X, Image as ImageIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import GifPicker from 'gif-picker-react';
 
 export default function Chat({ socket }) {
-    const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount } = useStore();
+    const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount, tenorApiKey } = useStore();
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [isTyping, setIsTyping] = useState(false);
     const typingTimeoutRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     const inputRef = useRef(null);
     const quickEmojis = ['❤️', '😂', '🙌', '🔥', '👏', '😮', '😢', '😍'];
+
+    const onGifClick = (gif) => {
+        const gifUrl = gif.url;
+        if (!gifUrl) return;
+
+        const msg = {
+            id: Date.now() + Math.random(),
+            content: gifUrl,
+            senderId: user.anonymousId,
+            timestamp: new Date().toISOString(),
+            status: 'sending'
+        };
+
+        addMessage(msg);
+        socket.emit('sendMessage', { content: gifUrl, senderId: user.id });
+        setShowGifPicker(false);
+    };
+
+    const isMedia = (text) => {
+        if (typeof text !== 'string') return false;
+        return text.startsWith('http') && (
+            text.match(/\.(jpeg|jpg|gif|png|webp|mp4)$/i) ||
+            text.includes('media.tenor.com') ||
+            text.includes('giphy.com')
+        );
+    };
 
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -286,6 +314,9 @@ export default function Chat({ socket }) {
                                             <div className={`
                                                 relative transition-all
                                                 ${(() => {
+                                                    if (isMedia(msg.content)) {
+                                                        return 'p-1.5 bg-[#111] border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-xl max-w-sm hover:border-[#333]';
+                                                    }
                                                     // Robust emoji-only check using Unicode Property Escapes
                                                     // \p{Emoji} matches emojis, \p{Extended_Pictographic} matches newer symbols
                                                     const content = msg.content.trim();
@@ -307,10 +338,26 @@ export default function Chat({ socket }) {
                                                     `;
                                                 })()}
                                             `}>
-                                                <p>{msg.content}</p>
+                                                <div className={isMedia(msg.content) ? 'w-full' : ''}>
+                                                    {isMedia(msg.content) ? (
+                                                        <img
+                                                            src={msg.content}
+                                                            alt="Media"
+                                                            className="w-full h-auto rounded-xl object-contain bg-black/50 min-w-[200px] min-h-[100px]"
+                                                            loading="lazy"
+                                                            onLoad={() => {
+                                                                if (shouldAutoScroll) {
+                                                                    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+                                                                }
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <p>{msg.content}</p>
+                                                    )}
+                                                </div>
 
                                                 {isMe && (
-                                                    <div className={`absolute -bottom-1.5 -right-1 ${(/[\p{Emoji}\p{Extended_Pictographic}]/u.test(msg.content) && !/[a-zA-Z0-9]/.test(msg.content)) ? 'opacity-40 invert' : ''}`}>
+                                                    <div className={`absolute -bottom-1.5 -right-1 ${(/[\p{Emoji}\p{Extended_Pictographic}]/u.test(msg.content) && !/[a-zA-Z0-9]/.test(msg.content)) || isMedia(msg.content) ? 'opacity-40 invert' : ''}`}>
                                                         {isSending ? (
                                                             <div className="w-2.5 h-2.5 border-[1.5px] border-black/20 border-t-black rounded-full animate-spin" />
                                                         ) : (
@@ -376,7 +423,21 @@ export default function Chat({ socket }) {
                             <div className="absolute right-3 flex items-center gap-1">
                                 <button
                                     type="button"
-                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    onClick={() => {
+                                        setShowGifPicker(!showGifPicker);
+                                        setShowEmojiPicker(false);
+                                    }}
+                                    className={`p-1.5 transition-all rounded-lg ${showGifPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                    title="Search GIFs"
+                                >
+                                    <ImageIcon size={20} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEmojiPicker(!showEmojiPicker);
+                                        setShowGifPicker(false);
+                                    }}
                                     className={`p-1.5 transition-all rounded-lg ${showEmojiPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
                                 >
                                     <Smile size={20} strokeWidth={2.5} />
@@ -397,41 +458,62 @@ export default function Chat({ socket }) {
                             {/* Emoji Picker Popover */}
                             <AnimatePresence>
                                 {showEmojiPicker && (
-                                    <>
-                                        <div
-                                            className="fixed inset-0 z-40"
-                                            onClick={() => setShowEmojiPicker(false)}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute bottom-full right-0 mb-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-[#1A1A1A]"
+                                    >
+                                        <EmojiPicker
+                                            onEmojiClick={onEmojiClick}
+                                            theme={Theme.DARK}
+                                            lazyLoadEmojis={true}
+                                            searchPlaceholder="Search protocol..."
+                                            width={350}
+                                            height={400}
+                                            skinTonesDisabled={true}
+                                            previewConfig={{ showPreview: false }}
                                         />
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            className="absolute bottom-full right-0 mb-4 z-50"
-                                        >
-                                            <div className="border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-2xl shadow-black">
-                                                <EmojiPicker
-                                                    onEmojiClick={onEmojiClick}
-                                                    theme={Theme.DARK}
-                                                    lazyLoadEmojis={true}
-                                                    searchPlaceHolder="Search payload..."
-                                                    width={300}
-                                                    height={380}
-                                                    skinTonesDisabled
-                                                    previewConfig={{ showPreview: false }}
-                                                    autoFocusSearch={false}
-                                                    style={{
-                                                        '--epr-bg-color': '#0a0a0a',
-                                                        '--epr-category-label-bg-color': '#0a0a0a',
-                                                        '--epr-picker-border-color': 'transparent',
-                                                        '--epr-search-input-bg-color': '#111',
-                                                        '--epr-search-input-placeholder-color': '#444',
-                                                        '--epr-search-input-border-color': '#1A1A1A',
-                                                        '--epr-emoji-hover-color': '#1a1a1a'
-                                                    }}
-                                                />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* GIF Picker Popover */}
+                            <AnimatePresence>
+                                {showGifPicker && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute bottom-full right-0 mb-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-[#1A1A1A]"
+                                    >
+                                        {tenorApiKey ? (
+                                            <GifPicker
+                                                tenorApiKey={tenorApiKey}
+                                                onGifClick={onGifClick}
+                                                theme="dark"
+                                                width={350}
+                                                height={400}
+                                            />
+                                        ) : (
+                                            <div className="bg-[#0a0a0a] p-6 w-[350px] border border-[#1A1A1A] rounded-2xl flex flex-col items-center text-center gap-3">
+                                                <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-1">
+                                                    <Shield size={24} className="text-blue-500" />
+                                                </div>
+                                                <h3 className="text-sm font-bold text-white uppercase tracking-widest text-[10px]">Transmission Locked</h3>
+                                                <p className="text-[10px] text-[#444] leading-relaxed">
+                                                    GIF capabilities require a Tenor API Key. <br />
+                                                    Initialize in **Appearance** settings.
+                                                </p>
+                                                <button
+                                                    onClick={() => setShowGifPicker(false)}
+                                                    className="mt-2 text-[10px] text-[#666] hover:text-white protocol-text"
+                                                >
+                                                    [DISMISS]
+                                                </button>
                                             </div>
-                                        </motion.div>
-                                    </>
+                                        )}
+                                    </motion.div>
                                 )}
                             </AnimatePresence>
                         </form>

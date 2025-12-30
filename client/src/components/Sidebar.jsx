@@ -27,6 +27,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     // User list
     const [userList, setUserList] = useState([]);
     const [listLoading, setListLoading] = useState(false);
+    const [userSearch, setUserSearch] = useState('');
+
+    const { tenorApiKey, setTenorApiKey } = useStore();
 
     const handleCreateUser = async (e) => {
         e.preventDefault();
@@ -435,30 +438,56 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto space-y-2">
+                            <div className="mb-4 relative shrink-0">
+                                <input
+                                    type="text"
+                                    placeholder="Search by username or ID..."
+                                    value={userSearch}
+                                    onChange={(e) => setUserSearch(e.target.value)}
+                                    className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-[#333]"
+                                />
+                                {userSearch && (
+                                    <button
+                                        onClick={() => setUserSearch('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#444] hover:text-white"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {listLoading ? (
                                     <p className="text-[#666] text-center py-4">Loading...</p>
-                                ) : userList.length === 0 ? (
-                                    <p className="text-[#666] text-center py-4">No users found</p>
+                                ) : userList.filter(u =>
+                                    u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+                                    String(u.anonymous_id).includes(userSearch)
+                                ).length === 0 ? (
+                                    <p className="text-[#666] text-center py-4">{userSearch ? 'No matches found' : 'No users found'}</p>
                                 ) : (
-                                    userList.map(u => (
-                                        <div key={u.id} className="flex items-center justify-between p-3 bg-[#111] rounded-xl border border-[#1A1A1A]">
-                                            <div>
-                                                <p className="text-white text-sm font-medium">@{u.username}</p>
-                                                <p className="text-[10px] text-[#666]">
-                                                    #{u.anonymous_id} • {u.role === 'admin' ? '🔴 Admin' : 'User'}
-                                                </p>
+                                    userList
+                                        .filter(u =>
+                                            u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+                                            String(u.anonymous_id).includes(userSearch)
+                                        )
+                                        .map(u => (
+                                            <div key={u.id} className="flex items-center justify-between p-3 bg-[#111] rounded-xl border border-[#1A1A1A] hover:border-[#222] transition-colors">
+                                                <div>
+                                                    <p className="text-white text-sm font-medium">@{u.username}</p>
+                                                    <p className="text-[10px] text-[#666]">
+                                                        #{u.anonymous_id} • {u.role === 'admin' ? '🔴 Admin' : 'User'}
+                                                    </p>
+                                                </div>
+                                                {u.role !== 'admin' && (
+                                                    <button
+                                                        onClick={() => deleteUser(u.id)}
+                                                        className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </div>
-                                            {u.role !== 'admin' && (
-                                                <button
-                                                    onClick={() => deleteUser(u.id)}
-                                                    className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))
+                                        ))
                                 )}
                             </div>
                         </motion.div>
@@ -598,6 +627,33 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 </button>
                             </div>
                             <div className="space-y-4">
+                                <div className="p-4 bg-[#111] rounded-xl border border-[#1A1A1A] hover:border-[#222] transition-colors">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <Disc size={18} className="text-blue-500" />
+                                            <span className="text-sm text-white">Tenor API Key</span>
+                                        </div>
+                                        <a
+                                            href="https://tenor.com/developer/key-registration"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-blue-500 hover:underline protocol-text flex items-center gap-1"
+                                        >
+                                            GET KEY
+                                        </a>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        value={tenorApiKey}
+                                        onChange={(e) => setTenorApiKey(e.target.value)}
+                                        placeholder="Paste key here for GIF support..."
+                                        className="w-full bg-black border border-[#1A1A1A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-[#333]"
+                                    />
+                                    <p className="text-[9px] text-[#444] mt-2 leading-tight">
+                                        Required for GIF search. Keys are encrypted in your local browser storage.
+                                    </p>
+                                </div>
+
                                 <div className="flex items-center justify-between p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
                                     <div className="flex items-center gap-3">
                                         <Moon size={18} className="text-[#888]" />

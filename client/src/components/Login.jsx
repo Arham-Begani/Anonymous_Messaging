@@ -40,7 +40,7 @@ export default function Login({ onLogin }) {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-black p-6 relative overflow-hidden">
+        <div className="flex items-center justify-center min-h-screen bg-black p-4 sm:p-6 relative overflow-hidden">
             {/* Background elements */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#111,black)]" />
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -49,30 +49,30 @@ export default function Login({ onLogin }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="w-full max-w-md relative z-10"
+                className="w-full max-w-[90%] sm:max-w-md relative z-10"
             >
-                <div className="text-center mb-10">
+                <div className="text-center mb-8 sm:mb-10">
                     <motion.div
                         initial={{ scale: 0.8 }}
                         animate={{ scale: 1 }}
-                        className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl"
+                        className="w-12 h-12 sm:w-16 sm:h-16 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-2xl"
                     >
-                        <Shield size={32} className="text-white" strokeWidth={1.5} />
+                        <Shield size={24} className="text-white sm:size-[32px]" strokeWidth={1.5} />
                     </motion.div>
-                    <h1 className="text-3xl font-bold tracking-tighter text-white mb-2 uppercase">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tighter text-white mb-2 uppercase">
                         System Access
                     </h1>
                     <p className="text-muted text-[10px] protocol-text">Backrow Protocol v2.5.0</p>
                 </div>
 
-                <div className="glass-panel p-8 rounded-[2rem] border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="glass-panel p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-muted protocol-text ml-1">Username</label>
+                            <label className="text-[10px] font-bold text-muted protocol-text ml-1 uppercase">Username</label>
                             <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-white transition-colors" size={18} />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-white transition-colors" size={16} />
                                 <input
-                                    className="w-full bg-black/50 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-neutral-700 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all text-sm font-medium"
+                                    className="w-full bg-black/50 border border-white/5 rounded-xl sm:rounded-2xl pl-12 pr-4 py-3 sm:py-4 text-white placeholder:text-neutral-700 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all text-sm font-medium"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     placeholder="Enter username..."
@@ -83,12 +83,12 @@ export default function Login({ onLogin }) {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-muted protocol-text ml-1">Password</label>
+                            <label className="text-[10px] font-bold text-muted protocol-text ml-1 uppercase">Password</label>
                             <div className="relative group">
-                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-white transition-colors" size={18} />
+                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-white transition-colors" size={16} />
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    className="w-full bg-black/50 border border-white/5 rounded-2xl pl-12 pr-12 py-4 text-white placeholder:text-neutral-700 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all text-sm font-medium tracking-widest"
+                                    className="w-full bg-black/50 border border-white/5 rounded-xl sm:rounded-2xl pl-12 pr-12 py-3 sm:py-4 text-white placeholder:text-neutral-700 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all text-sm font-medium tracking-widest"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
@@ -100,7 +100,7 @@ export default function Login({ onLogin }) {
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                         </div>
@@ -111,7 +111,7 @@ export default function Login({ onLogin }) {
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
-                                    className="text-red-400 text-[11px] text-center bg-red-500/5 py-3 rounded-xl border border-red-500/10 protocol-text"
+                                    className="text-red-400 text-[10px] text-center bg-red-500/5 py-3 rounded-xl border border-red-500/10 protocol-text"
                                 >
                                     {error}
                                 </motion.div>
@@ -120,13 +120,13 @@ export default function Login({ onLogin }) {
 
                         <button
                             disabled={loading}
-                            className="w-full bg-white text-black font-extrabold py-4 rounded-2xl hover:bg-neutral-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex items-center justify-center gap-2 group"
+                            className="w-full bg-white text-black font-extrabold py-3 sm:py-4 rounded-xl sm:rounded-2xl hover:bg-neutral-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl flex items-center justify-center gap-2 group"
                         >
                             {loading ? (
                                 <span className="animate-pulse protocol-text">Verifying...</span>
                             ) : (
                                 <>
-                                    <span>Login</span>
+                                    <span className="text-sm">Login</span>
                                     <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
@@ -134,8 +134,8 @@ export default function Login({ onLogin }) {
                     </form>
                 </div>
 
-                <p className="mt-8 text-center text-muted text-[10px] protocol-text opacity-50">
-                    Contact admin for account access. All connections are encrypted.
+                <p className="mt-6 sm:mt-8 text-center text-muted text-[10px] protocol-text opacity-50">
+                    Encrypted Connection. Backrow Release.
                 </p>
             </motion.div>
         </div>

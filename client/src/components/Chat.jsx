@@ -131,34 +131,68 @@ export default function Chat({ socket }) {
         }
     };
 
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
     return (
         <div className="flex h-screen bg-black text-white overflow-hidden font-sans">
             {/* Sidebar component */}
-            <Sidebar />
+            <Sidebar
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                isCollapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
 
-            {/* Chat Area */}
-            <div className="flex-1 flex flex-col relative min-w-0">
+            {/* Main Chat Area */}
+            <div className="flex-1 flex flex-col relative min-w-0 h-full">
+                {/* Mobile Overlay */}
+                <AnimatePresence>
+                    {sidebarOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSidebarOpen(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+                        />
+                    )}
+                </AnimatePresence>
+
                 {/* Chat Header */}
-                <div className="h-16 border-b border-[#1A1A1A] flex items-center justify-between px-6 bg-black/80 backdrop-blur-md z-10 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#111] border border-[#1A1A1A] flex items-center justify-center text-white overflow-hidden relative shadow-lg">
-                            <Globe size={20} />
-                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black animate-pulse" />
+                <div className="h-16 border-b border-[#1A1A1A] flex items-center justify-between px-4 md:px-6 bg-black/80 backdrop-blur-md z-10 shrink-0">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 text-[#666] hover:text-white md:hidden"
+                        >
+                            <Zap size={20} />
+                        </button>
+
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#111] border border-[#1A1A1A] flex items-center justify-center text-white overflow-hidden relative shadow-lg">
+                            <Globe size={18} className="md:size-5" />
+                            <div className="absolute bottom-0 right-0 w-2 h-2 md:w-2.5 md:h-2.5 bg-green-500 rounded-full border-2 border-black animate-pulse" />
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="font-bold text-sm tracking-tight text-white">Global Group</h2>
-                                <Shield size={12} className="text-[#444]" />
+                                <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">Global Group</h2>
+                                <Shield size={10} className="text-[#444] hidden md:block" />
                             </div>
-                            <p className="text-[10px] text-[#666] protocol-text flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                                {onlineCount || 0} Online
+                            <p className="text-[9px] text-[#666] protocol-text flex items-center gap-1.5">
+                                <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500 inline-block" />
+                                {onlineCount || 0} <span className="hidden xs:inline">Online</span>
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button className="p-2 text-[#666] hover:text-white hover:bg-[#111] rounded-lg transition-all">
+                    <div className="flex items-center gap-1 md:gap-3">
+                        <button className="p-2 text-[#666] hover:text-white hover:bg-[#111] rounded-lg transition-all hidden sm:block">
                             <Search size={18} />
+                        </button>
+                        <button
+                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                            className="p-2 text-[#666] hover:text-white hover:bg-[#111] rounded-lg transition-all hidden md:block"
+                        >
+                            <Plus size={18} className={sidebarCollapsed ? 'rotate-45 transition-transform' : 'transition-transform'} />
                         </button>
                     </div>
                 </div>
@@ -167,7 +201,7 @@ export default function Chat({ socket }) {
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scroll-smooth bg-[radial-gradient(circle_at_center,#050505,black)]"
+                    className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 scroll-smooth bg-[radial-gradient(circle_at_center,#050505,black)]"
                 >
                     <div className="flex flex-col items-center justify-center py-8 opacity-40 select-none">
                         <div className="px-3 py-1 bg-[#111] border border-[#1A1A1A] rounded-full text-[9px] protocol-text mb-3 text-[#555]">

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
     const { user, logout, onlineCount } = useStore();
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showAppearance, setShowAppearance] = useState(false);
@@ -86,92 +86,116 @@ export default function Sidebar() {
             console.error('Failed to delete user');
         }
     };
-
     return (
         <>
-            <div className="w-64 h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans">
+            <motion.div
+                initial={false}
+                animate={{
+                    width: isCollapsed ? 72 : 256,
+                    x: isOpen ? 0 : (window.innerWidth < 768 ? -256 : 0)
+                }}
+                className={`
+                    fixed md:relative h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans transition-colors
+                    ${isOpen ? 'shadow-[20px_0_50px_rgba(0,0,0,0.5)]' : ''}
+                `}
+            >
                 {/* Header */}
-                <div className="p-6 pb-2">
+                <div className={`p-6 pb-2 ${isCollapsed ? 'px-0 flex justify-center' : ''}`}>
                     <div className="flex items-center gap-3">
                         <motion.div
                             whileHover={{ rotate: 360 }}
                             transition={{ duration: 0.5 }}
-                            className="w-8 h-8 bg-[#111] border border-[#1A1A1A] rounded-lg flex items-center justify-center"
+                            className="w-8 h-8 bg-[#111] border border-[#1A1A1A] rounded-lg flex items-center justify-center shrink-0"
                         >
                             <Disc size={18} className="text-white" />
                         </motion.div>
-                        <div>
-                            <h1 className="font-bold text-white tracking-tight text-sm">Backrow</h1>
-                            <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
-                        </div>
+                        {!isCollapsed && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                <h1 className="font-bold text-white tracking-tight text-sm">Backrow</h1>
+                                <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
+                            </motion.div>
+                        )}
+                        {isOpen && (
+                            <button onClick={onClose} className="ml-auto p-1 md:hidden">
+                                <X size={20} className="text-[#444]" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* Main Menu */}
-                <div className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+                <div className={`flex-1 px-3 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#111] border border-[#1A1A1A] text-white hover:bg-[#161616] transition-all group"
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#111] border border-[#1A1A1A] text-white hover:bg-[#161616] transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                        <Globe size={16} className="text-[#888] group-hover:text-white transition-colors" />
-                        <span className="text-sm font-medium">Global Chat</span>
-                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] animate-pulse" />
+                        <Globe size={16} className="text-[#888] group-hover:text-white transition-colors shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">Global Chat</span>}
+                        {(!isCollapsed || onlineCount > 0) && (
+                            <div className={`${isCollapsed ? 'absolute top-2 right-2' : 'ml-auto'} w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] animate-pulse`} />
+                        )}
                     </motion.button>
 
-                    <div className="px-3 py-2.5 flex items-center gap-3 text-[#666]">
-                        <Users size={16} />
-                        <span className="text-sm font-medium">{onlineCount || 0} Online</span>
+                    <div className={`px-3 py-2.5 flex items-center gap-3 text-[#666] ${isCollapsed ? 'justify-center px-0' : ''}`}>
+                        <Users size={16} className="shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">{onlineCount || 0} Online</span>}
                     </div>
 
                     <div className="my-4 h-px bg-[#111]" />
 
                     <motion.button
-                        whileHover={{ scale: 1.02, x: 4 }}
+                        whileHover={{ scale: 1.02, x: isCollapsed ? 0 : 4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setShowAnnouncements(true)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all"
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        title={isCollapsed ? "Announcements" : ""}
                     >
-                        <Megaphone size={16} />
-                        <span className="text-sm font-medium">Announcements</span>
+                        <Megaphone size={16} className="shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">Announcements</span>}
                     </motion.button>
 
                     <motion.button
-                        whileHover={{ scale: 1.02, x: 4 }}
+                        whileHover={{ scale: 1.02, x: isCollapsed ? 0 : 4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setShowAppearance(true)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all"
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        title={isCollapsed ? "Appearance" : ""}
                     >
-                        <Palette size={16} />
-                        <span className="text-sm font-medium">Appearance</span>
+                        <Palette size={16} className="shrink-0" />
+                        {!isCollapsed && <span className="text-sm font-medium">Appearance</span>}
                     </motion.button>
 
                     {user?.role === 'admin' && (
                         <>
                             <div className="my-4 h-px bg-[#111]" />
-                            <div className="px-3 pb-2 text-[10px] font-bold text-red-500/50 protocol-text uppercase tracking-widest flex items-center gap-2">
-                                <Shield size={10} />
-                                Admin Panel
-                            </div>
+                            {!isCollapsed && (
+                                <div className="px-3 pb-2 text-[10px] font-bold text-red-500/50 protocol-text uppercase tracking-widest flex items-center gap-2">
+                                    <Shield size={10} />
+                                    Admin Panel
+                                </div>
+                            )}
 
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setShowCreateUser(true)}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-green-500/70 hover:text-green-500 hover:bg-green-500/5 border border-transparent hover:border-green-500/20 transition-all"
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-green-500/70 hover:text-green-500 hover:bg-green-500/5 border border-transparent hover:border-green-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                title={isCollapsed ? "Create User" : ""}
                             >
-                                <UserPlus size={16} />
-                                <span className="text-sm font-medium">Create User</span>
+                                <UserPlus size={16} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">Create User</span>}
                             </motion.button>
 
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => { setShowManageUsers(true); loadUsers(); }}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/5 border border-transparent hover:border-blue-500/20 transition-all"
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/5 border border-transparent hover:border-blue-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                title={isCollapsed ? "Manage Users" : ""}
                             >
-                                <Users size={16} />
-                                <span className="text-sm font-medium">Manage Users</span>
+                                <Users size={16} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">Manage Users</span>}
                             </motion.button>
 
                             <motion.button
@@ -182,43 +206,48 @@ export default function Sidebar() {
                                         window.dispatchEvent(new CustomEvent('admin:clearChat'));
                                     }
                                 }}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500/70 hover:text-red-500 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all"
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500/70 hover:text-red-500 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                title={isCollapsed ? "Clear Chat" : ""}
                             >
-                                <Disc size={16} />
-                                <span className="text-sm font-medium">Clear Chat</span>
+                                <Disc size={16} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium">Clear Chat</span>}
                             </motion.button>
                         </>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="p-3 mt-auto border-t border-[#1A1A1A]">
+                <div className={`p-3 mt-auto border-t border-[#1A1A1A] ${isCollapsed ? 'px-2' : ''}`}>
                     <motion.div
                         whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
-                        className="flex items-center gap-3 p-2 rounded-lg transition-colors group cursor-pointer"
+                        className={`flex items-center gap-3 p-2 rounded-lg transition-colors group cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#222] to-[#111] border border-[#1A1A1A] flex items-center justify-center text-[#888] group-hover:text-white transition-colors">
-                            <span className="text-xs font-mono font-bold">
-                                #{(user?.anonymousId || '0000').toString().slice(0, 4)}
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#222] to-[#111] border border-[#1A1A1A] flex items-center justify-center text-[#888] group-hover:text-white transition-colors shrink-0">
+                            <span className="text-[10px] font-mono font-bold">
+                                #{(user?.anonymousId || '0000').toString().slice(0, 2)}
                             </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">@{user?.username || 'anonymous'}</p>
-                            <p className="text-[10px] text-[#444] font-mono truncate">
-                                {user?.role === 'admin' ? '🔴 ADMIN' : `#${user?.anonymousId || 'UNKNOWN'}`}
-                            </p>
-                        </div>
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={logout}
-                            className="p-1.5 text-[#444] hover:text-red-400 transition-colors"
-                        >
-                            <LogOut size={14} />
-                        </motion.button>
+                        {!isCollapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">@{user?.username || 'anonymous'}</p>
+                                <p className="text-[10px] text-[#444] font-mono truncate uppercase">
+                                    {user?.role === 'admin' ? '🔴 ADMIN' : `#${user?.anonymousId || 'UNKNOWN'}`}
+                                </p>
+                            </div>
+                        )}
+                        {!isCollapsed && (
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={logout}
+                                className="p-1.5 text-[#444] hover:text-red-400 transition-colors"
+                            >
+                                <LogOut size={14} />
+                            </motion.button>
+                        )}
                     </motion.div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Create User Modal */}
             <AnimatePresence>

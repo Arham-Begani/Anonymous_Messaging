@@ -1,0 +1,462 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useStore } from '../store';
+
+export default function Sidebar() {
+    const { user, logout, onlineCount } = useStore();
+    const [showAnnouncements, setShowAnnouncements] = useState(false);
+    const [showAppearance, setShowAppearance] = useState(false);
+    const [showCreateUser, setShowCreateUser] = useState(false);
+    const [showManageUsers, setShowManageUsers] = useState(false);
+    const [notifications, setNotifications] = useState(true);
+
+    // Create user form
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [newRole, setNewRole] = useState('user');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [createLoading, setCreateLoading] = useState(false);
+    const [createMessage, setCreateMessage] = useState('');
+
+    // User list
+    const [userList, setUserList] = useState([]);
+    const [listLoading, setListLoading] = useState(false);
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        setCreateLoading(true);
+        setCreateMessage('');
+
+        try {
+            const res = await fetch('/api/admin/create-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminToken: user.token,
+                    username: newUsername,
+                    password: newPassword,
+                    role: newRole
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                setCreateMessage(`✓ Created: ${data.username} (ID #${data.anonymousId})`);
+                setNewUsername('');
+                setNewPassword('');
+                setNewRole('user');
+            } else {
+                setCreateMessage(`✗ ${data.error}`);
+            }
+        } catch (err) {
+            setCreateMessage('✗ Failed to create user');
+        }
+        setCreateLoading(false);
+    };
+
+    const loadUsers = async () => {
+        setListLoading(true);
+        try {
+            const res = await fetch('/api/admin/list-users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminToken: user.token })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setUserList(data.users);
+            }
+        } catch (err) {
+            console.error('Failed to load users');
+        }
+        setListLoading(false);
+    };
+
+    const deleteUser = async (userId) => {
+        if (!confirm('Delete this user?')) return;
+        try {
+            await fetch('/api/admin/delete-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminToken: user.token, userId })
+            });
+            loadUsers();
+        } catch (err) {
+            console.error('Failed to delete user');
+        }
+    };
+
+    return (
+        <>
+            <div className="w-64 h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans">
+                {/* Header */}
+                <div className="p-6 pb-2">
+                    <div className="flex items-center gap-3">
+                        <motion.div
+                            whileHover={{ rotate: 360 }}
+                            transition={{ duration: 0.5 }}
+                            className="w-8 h-8 bg-[#111] border border-[#1A1A1A] rounded-lg flex items-center justify-center"
+                        >
+                            <Disc size={18} className="text-white" />
+                        </motion.div>
+                        <div>
+                            <h1 className="font-bold text-white tracking-tight text-sm">AnonChat</h1>
+                            <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Menu */}
+                <div className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#111] border border-[#1A1A1A] text-white hover:bg-[#161616] transition-all group"
+                    >
+                        <Globe size={16} className="text-[#888] group-hover:text-white transition-colors" />
+                        <span className="text-sm font-medium">Global Chat</span>
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] animate-pulse" />
+                    </motion.button>
+
+                    <div className="px-3 py-2.5 flex items-center gap-3 text-[#666]">
+                        <Users size={16} />
+                        <span className="text-sm font-medium">{onlineCount || 0} Online</span>
+                    </div>
+
+                    <div className="my-4 h-px bg-[#111]" />
+
+                    <motion.button
+                        whileHover={{ scale: 1.02, x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowAnnouncements(true)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all"
+                    >
+                        <Megaphone size={16} />
+                        <span className="text-sm font-medium">Announcements</span>
+                    </motion.button>
+
+                    <motion.button
+                        whileHover={{ scale: 1.02, x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowAppearance(true)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all"
+                    >
+                        <Palette size={16} />
+                        <span className="text-sm font-medium">Appearance</span>
+                    </motion.button>
+
+                    {user?.role === 'admin' && (
+                        <>
+                            <div className="my-4 h-px bg-[#111]" />
+                            <div className="px-3 pb-2 text-[10px] font-bold text-red-500/50 protocol-text uppercase tracking-widest flex items-center gap-2">
+                                <Shield size={10} />
+                                Admin Panel
+                            </div>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setShowCreateUser(true)}
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-green-500/70 hover:text-green-500 hover:bg-green-500/5 border border-transparent hover:border-green-500/20 transition-all"
+                            >
+                                <UserPlus size={16} />
+                                <span className="text-sm font-medium">Create User</span>
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => { setShowManageUsers(true); loadUsers(); }}
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/5 border border-transparent hover:border-blue-500/20 transition-all"
+                            >
+                                <Users size={16} />
+                                <span className="text-sm font-medium">Manage Users</span>
+                            </motion.button>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                    if (confirm('Clear all chat history?')) {
+                                        window.dispatchEvent(new CustomEvent('admin:clearChat'));
+                                    }
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500/70 hover:text-red-500 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all"
+                            >
+                                <Disc size={16} />
+                                <span className="text-sm font-medium">Clear Chat</span>
+                            </motion.button>
+                        </>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-3 mt-auto border-t border-[#1A1A1A]">
+                    <motion.div
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+                        className="flex items-center gap-3 p-2 rounded-lg transition-colors group cursor-pointer"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#222] to-[#111] border border-[#1A1A1A] flex items-center justify-center text-[#888] group-hover:text-white transition-colors">
+                            <span className="text-xs font-mono font-bold">
+                                #{(user?.anonymousId || '0000').toString().slice(0, 4)}
+                            </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">@{user?.username || 'anonymous'}</p>
+                            <p className="text-[10px] text-[#444] font-mono truncate">
+                                {user?.role === 'admin' ? '🔴 ADMIN' : `#${user?.anonymousId || 'UNKNOWN'}`}
+                            </p>
+                        </div>
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={logout}
+                            className="p-1.5 text-[#444] hover:text-red-400 transition-colors"
+                        >
+                            <LogOut size={14} />
+                        </motion.button>
+                    </motion.div>
+                </div>
+            </div>
+
+            {/* Create User Modal */}
+            <AnimatePresence>
+                {showCreateUser && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowCreateUser(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <UserPlus size={20} className="text-green-500" />
+                                    Create New User
+                                </h2>
+                                <button onClick={() => setShowCreateUser(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateUser} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Username</label>
+                                    <input
+                                        value={newUsername}
+                                        onChange={(e) => setNewUsername(e.target.value)}
+                                        className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#333]"
+                                        placeholder="Enter username..."
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Password</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showNewPassword ? "text" : "password"}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 pr-12 text-white text-sm focus:outline-none focus:border-[#333]"
+                                            placeholder="Enter password..."
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-white"
+                                        >
+                                            {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Role</label>
+                                    <select
+                                        value={newRole}
+                                        onChange={(e) => setNewRole(e.target.value)}
+                                        className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#333]"
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+
+                                {createMessage && (
+                                    <p className={`text-sm ${createMessage.startsWith('✓') ? 'text-green-500' : 'text-red-500'}`}>
+                                        {createMessage}
+                                    </p>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={createLoading}
+                                    className="w-full bg-green-500 text-black font-bold py-3 rounded-xl hover:bg-green-400 transition-colors disabled:opacity-50"
+                                >
+                                    {createLoading ? 'Creating...' : 'Create User'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Manage Users Modal */}
+            <AnimatePresence>
+                {showManageUsers && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowManageUsers(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-hidden flex flex-col"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Users size={20} className="text-blue-500" />
+                                    Manage Users
+                                </h2>
+                                <button onClick={() => setShowManageUsers(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-2">
+                                {listLoading ? (
+                                    <p className="text-[#666] text-center py-4">Loading...</p>
+                                ) : userList.length === 0 ? (
+                                    <p className="text-[#666] text-center py-4">No users found</p>
+                                ) : (
+                                    userList.map(u => (
+                                        <div key={u.id} className="flex items-center justify-between p-3 bg-[#111] rounded-xl border border-[#1A1A1A]">
+                                            <div>
+                                                <p className="text-white text-sm font-medium">@{u.username}</p>
+                                                <p className="text-[10px] text-[#666]">
+                                                    #{u.anonymous_id} • {u.role === 'admin' ? '🔴 Admin' : 'User'}
+                                                </p>
+                                            </div>
+                                            {u.role !== 'admin' && (
+                                                <button
+                                                    onClick={() => deleteUser(u.id)}
+                                                    className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Announcements Modal */}
+            <AnimatePresence>
+                {showAnnouncements && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowAnnouncements(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Megaphone size={20} />
+                                    Announcements
+                                </h2>
+                                <button onClick={() => setShowAnnouncements(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
+                                    <p className="text-[10px] text-[#555] protocol-text mb-2">Dec 30, 2024</p>
+                                    <p className="text-sm text-[#ccc]">🎉 User accounts are now live! Each user has unique login.</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Appearance Modal */}
+            <AnimatePresence>
+                {showAppearance && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowAppearance(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Palette size={20} />
+                                    Appearance
+                                </h2>
+                                <button onClick={() => setShowAppearance(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
+                                    <div className="flex items-center gap-3">
+                                        <Moon size={18} className="text-[#888]" />
+                                        <span className="text-sm text-white">Dark Mode</span>
+                                    </div>
+                                    <div className="w-10 h-6 bg-white rounded-full flex items-center justify-end px-1">
+                                        <div className="w-4 h-4 bg-black rounded-full" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
+                                    <div className="flex items-center gap-3">
+                                        {notifications ? <Bell size={18} className="text-[#888]" /> : <BellOff size={18} className="text-[#888]" />}
+                                        <span className="text-sm text-white">Notifications</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setNotifications(!notifications)}
+                                        className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${notifications ? 'bg-white justify-end' : 'bg-[#333] justify-start'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full transition-colors ${notifications ? 'bg-black' : 'bg-[#666]'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+}

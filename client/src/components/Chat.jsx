@@ -284,15 +284,28 @@ export default function Chat({ socket }) {
                                             </div>
 
                                             <div className={`
-                                                px-5 py-3 rounded-2xl text-[14px] leading-relaxed relative shadow-md transition-all
-                                                ${isMe
-                                                    ? 'bg-white text-black rounded-tr-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                                                    : 'bg-[#111] border border-[#1A1A1A] text-[#ccc] rounded-tl-sm hover:border-[#333]'
-                                                }
+                                                relative transition-all
+                                                ${(() => {
+                                                    // Check if content is only emojis (up to 3 for big size)
+                                                    const emojiRegex = /^(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|[\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|[\ud83c[\ude32-\ude3a]|[\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2194-\u2199]|\u2ad5|\u2ae4|\u21a9|\u21aa|\u25af|\u25b0|\u25b1|\u25b2|\u25b3|\u25b4|\u25b5|\u25b6|\u25b7|\u25b8|\u25b9|\u25ba|\u25bb|\u25bc|\u25bd|\u25be|\u25bf|\u25c0|\u25c1|\u25c2|\u25c3|\u25c4|\u25c5|\u25c6|\u25c7|\u25c8|\u25c9|\u25ca|\u25cb|\u25cc|\u25cd|\u25ce|\u25cf|\u25d0|\u25d1|\u25d2|\u25d3|\u25d4|\u25d5|\u25d6|\u25d7|\u25d8|\u25d9|\u25da|\u25db|\u25dc|\u25dd|\u25de|\u25df|\u25e0|\u25e1|\u25e2|\u25e3|\u25e4|\u25e5|\u25e6|\u25e7|\u25e8|\u25e9|\u25ea|\u25eb|\u25ec|\u25ed|\u25ee|\u25ef|\u25f0|\u25f1|\u25f2|\u25f3|\u25f4|\u25f5|\u25f6|\u25f7|\u25f8|\u25f9|\u25fa|\u25fb|\u25fc|\u25fd|\u25fe|\u25ff|\s)+$/u;
+                                                    const isOnlyEmojis = emojiRegex.test(msg.content);
+
+                                                    if (isOnlyEmojis) {
+                                                        return 'text-[40px] leading-tight select-none py-1';
+                                                    }
+
+                                                    return `
+                                                        px-5 py-3 rounded-2xl text-[14px] leading-relaxed shadow-md
+                                                        ${isMe
+                                                            ? 'bg-white text-black rounded-tr-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                                                            : 'bg-[#111] border border-[#1A1A1A] text-[#ccc] rounded-tl-sm hover:border-[#333]'
+                                                        }
+                                                    `;
+                                                })()}
                                             `}>
                                                 <p>{msg.content}</p>
 
-                                                {isMe && (
+                                                {isMe && !(/^(?:[\u2700-\u27bf]|[\ud800-\udbff][\udc00-\udfff]|\s)+$/u.test(msg.content)) && (
                                                     <div className="absolute -bottom-1.5 -right-1">
                                                         {isSending ? (
                                                             <div className="w-2.5 h-2.5 border-[1.5px] border-black/20 border-t-black rounded-full animate-spin" />

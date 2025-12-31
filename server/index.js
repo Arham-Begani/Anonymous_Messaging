@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
@@ -28,23 +28,36 @@ function hashPassword(plain) {
 }
 
 // Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+const db = new sqlite3.Database(path.join(__dirname, 'chat_users.db'), (err) => {
+  if (err) console.error('[DB] Connection error:', err);
+  else console.log('[DB] SQLite connected.');
 });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
+// Helper for promise-based queries
+function query(sql, params = []) {
+  // Convert $1, $2... to ? for SQLite
+  const sqliteSql = sql.replace(/\$(\d+)/g, '?');
+  return new Promise((resolve, reject) => {
+    if (sqliteSql.trim().toLowerCase().startsWith('select')) {
+      db.all(sqliteSql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve({ rows });
+      });
+    } else {
+      db.run(sqliteSql, params, function (err) {
+        if (err) reject(err);
+        else resolve({ rows: [], lastID: this.lastID, changes: this.changes });
+      });
+    }
+  });
+}
+
 
 async function initDb() {
   try {
     // Users table
-    await pool.query(`CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
+    await query(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT DEFAULT 'user',
@@ -52,43 +65,94 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS active_sessions (
+    await query(`CREATE TABLE IF NOT EXISTS active_sessions (
       socket_id TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL,
       login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
+    await query(`CREATE TABLE IF NOT EXISTS topics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      description TEXT,
+      created_by INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content TEXT NOT NULL,
+      author_id INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS banned_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER UNIQUE NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Migration: Add created_by to topics if missing
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN created_by INTEGER`);
+    } catch (e) { }
+
+    // Migration: Add customization fields to topics
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN bg_color TEXT DEFAULT '#0A0A0A'`);
+    } catch (e) { }
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN text_color TEXT DEFAULT '#FFFFFF'`);
+    } catch (e) { }
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN accent_color TEXT DEFAULT '#3B82F6'`);
+    } catch (e) { }
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN animation TEXT DEFAULT 'none'`);
+    } catch (e) { }
+    try {
+      await query(`ALTER TABLE topics ADD COLUMN username_color TEXT DEFAULT '#888888'`);
+    } catch (e) { }
+
+    // Seed default topic
+    await query(`
+      INSERT OR IGNORE INTO topics (name, slug, description) 
+      VALUES ('Global Chat', 'global', 'The main lobby for everyone')
+    `);
+
+    await query(`CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       content TEXT NOT NULL,
       sender_id INTEGER,
       sender_anonymous_id INTEGER,
+      topic_id INTEGER DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS banned_users (
-      user_id INTEGER PRIMARY KEY,
-      reason TEXT,
-      banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+    // Migration: Add topic_id if it doesn't exist
+    try {
+      await query(`ALTER TABLE messages ADD COLUMN topic_id INTEGER DEFAULT 1`);
+    } catch (e) {
+      // Ignored if column exists
+    }
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
-      id SERIAL PRIMARY KEY,
-      content TEXT NOT NULL,
-      author_id INTEGER REFERENCES users(id),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+    // Update existing messages with NULL or old defaults to the new 'global' topic ID
+    const globalTopic = await query("SELECT id FROM topics WHERE slug = 'global'");
+    if (globalTopic.rows[0]) {
+      const gid = globalTopic.rows[0].id;
+      await query(`UPDATE messages SET topic_id = $1 WHERE topic_id IS NULL OR topic_id = 1`, [gid]);
+    }
 
-    // Seed admin account
     const adminHash = hashPassword('admin123');
-    const adminAnonId = Math.floor(Math.random() * 9000) + 1000;
-    await pool.query(
-      `INSERT INTO users (username, password_hash, role, anonymous_id) 
-       VALUES ($1, $2, 'admin', $3) 
-       ON CONFLICT (username) DO NOTHING`,
+    const adminAnonId = 0;
+    await query(
+      `INSERT OR IGNORE INTO users (username, password_hash, role, anonymous_id) 
+       VALUES ($1, $2, 'admin', $3)`,
       ['admin', adminHash, adminAnonId]
     );
-    console.log('[DB] PostgreSQL initialized and admin account verified.');
+    console.log('[DB] SQLite initialized and admin account verified.');
   } catch (err) {
     console.error('[DB] Initialization error:', err);
   }
@@ -107,12 +171,12 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const h = hashPassword(password);
-    const result = await pool.query('SELECT * FROM users WHERE username = $1 AND password_hash = $2', [name.toLowerCase(), h]);
+    const result = await query('SELECT * FROM users WHERE username = $1 AND password_hash = $2', [name.toLowerCase(), h]);
     const user = result.rows[0];
 
     if (!user) return res.status(401).json({ error: 'Invalid username or password' });
 
-    const banResult = await pool.query('SELECT * FROM banned_users WHERE user_id = $1', [user.id]);
+    const banResult = await query('SELECT * FROM banned_users WHERE user_id = $1', [user.id]);
     if (banResult.rows[0]) return res.status(403).json({ error: 'Your account has been suspended' });
 
     res.json({
@@ -134,15 +198,15 @@ app.post('/api/admin/create-user', async (req, res) => {
 
   try {
     const adminHash = hashPassword(adminToken);
-    const adminRes = await pool.query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
     if (!adminRes.rows[0]) return res.status(403).json({ error: 'Unauthorized' });
 
-    const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username.toLowerCase()]);
+    const existing = await query('SELECT * FROM users WHERE username = $1', [username.toLowerCase()]);
     if (existing.rows[0]) return res.status(400).json({ error: 'Username already exists' });
 
     const userHash = hashPassword(password);
     const anonId = Math.floor(Math.random() * 9000) + 1000;
-    await pool.query('INSERT INTO users (username, password_hash, role, anonymous_id) VALUES ($1, $2, $3, $4)',
+    await query('INSERT INTO users (username, password_hash, role, anonymous_id) VALUES ($1, $2, $3, $4)',
       [username.toLowerCase(), userHash, role, anonId]
     );
 
@@ -157,10 +221,10 @@ app.post('/api/admin/list-users', async (req, res) => {
   const { adminToken } = req.body;
   try {
     const adminHash = hashPassword(adminToken);
-    const adminRes = await pool.query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
     if (!adminRes.rows[0]) return res.status(403).json({ error: 'Unauthorized' });
 
-    const users = await pool.query('SELECT id, username, role, anonymous_id, created_at FROM users');
+    const users = await query('SELECT id, username, role, anonymous_id, created_at FROM users');
     res.json({ users: users.rows });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
@@ -171,10 +235,10 @@ app.post('/api/admin/delete-user', async (req, res) => {
   const { adminToken, userId } = req.body;
   try {
     const adminHash = hashPassword(adminToken);
-    const adminRes = await pool.query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
     if (!adminRes.rows[0]) return res.status(403).json({ error: 'Unauthorized' });
 
-    await pool.query('DELETE FROM users WHERE id = $1 AND role != $2', [userId, 'admin']);
+    await query('DELETE FROM users WHERE id = $1 AND role != $2', [userId, 'admin']);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
@@ -183,7 +247,7 @@ app.post('/api/admin/delete-user', async (req, res) => {
 
 app.get('/api/announcements', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 20');
+    const result = await query('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 20');
     res.json({ announcements: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch announcements' });
@@ -196,16 +260,16 @@ app.post('/api/admin/create-announcement', async (req, res) => {
 
   try {
     const adminHash = hashPassword(adminToken);
-    const adminRes = await pool.query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
     const admin = adminRes.rows[0];
     if (!admin) return res.status(403).json({ error: 'Unauthorized' });
 
-    const result = await pool.query(
-      'INSERT INTO announcements (content, author_id) VALUES ($1, $2) RETURNING *',
+    const result = await query(
+      'INSERT INTO announcements (content, author_id) VALUES ($1, $2)',
       [content, admin.id]
     );
 
-    const announcement = result.rows[0];
+    const announcement = (await query('SELECT * FROM announcements WHERE id = $1', [result.lastID])).rows[0];
     io.emit('newAnnouncement', announcement);
 
     // Also send a system message to the chat
@@ -224,13 +288,111 @@ app.post('/api/admin/create-announcement', async (req, res) => {
   }
 });
 
+app.get('/api/topics', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM topics ORDER BY created_at ASC');
+    res.json({ topics: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch topics' });
+  }
+});
+
+app.post('/api/admin/create-topic', async (req, res) => {
+  const { adminToken, name, description } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+
+  try {
+    const adminHash = hashPassword(adminToken);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    const admin = adminRes.rows[0];
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!slug) return res.status(400).json({ error: 'Invalid name' });
+    const result = await query(
+      'INSERT INTO topics (name, slug, description, created_by) VALUES ($1, $2, $3, $4)',
+      [name, slug, description || '', admin.id]
+    );
+
+    const topic = (await query('SELECT * FROM topics WHERE id = ?', [result.lastID])).rows[0];
+    io.emit('newTopic', topic);
+    res.json({ success: true, topic });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'Topic already exists' });
+    console.error('[TOPIC] Create error:', err);
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+app.put('/api/admin/update-topic', async (req, res) => {
+  const { adminToken, topicId, name, description, bg_color, text_color, accent_color, animation, username_color } = req.body;
+  if (!topicId) return res.status(400).json({ error: 'Topic ID required' });
+
+  try {
+    const adminHash = hashPassword(adminToken);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    if (!adminRes.rows[0]) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Build dynamic update
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (name) { updates.push(`name = $${paramIndex++}`); params.push(name); }
+    if (description !== undefined) { updates.push(`description = $${paramIndex++}`); params.push(description); }
+    if (bg_color) { updates.push(`bg_color = $${paramIndex++}`); params.push(bg_color); }
+    if (text_color) { updates.push(`text_color = $${paramIndex++}`); params.push(text_color); }
+    if (accent_color) { updates.push(`accent_color = $${paramIndex++}`); params.push(accent_color); }
+    if (animation) { updates.push(`animation = $${paramIndex++}`); params.push(animation); }
+    if (username_color) { updates.push(`username_color = $${paramIndex++}`); params.push(username_color); }
+
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+
+    params.push(topicId);
+    await query(`UPDATE topics SET ${updates.join(', ')} WHERE id = $${paramIndex}`, params);
+
+    const topic = (await query('SELECT * FROM topics WHERE id = $1', [topicId])).rows[0];
+    io.emit('topicUpdated', topic);
+    res.json({ success: true, topic });
+  } catch (err) {
+    console.error('[TOPIC] Update error:', err);
+    res.status(500).json({ error: 'Failed to update topic' });
+  }
+});
+
+app.delete('/api/admin/delete-topic', async (req, res) => {
+  const { adminToken, topicId } = req.body;
+  if (!topicId) return res.status(400).json({ error: 'Topic ID required' });
+
+  try {
+    const adminHash = hashPassword(adminToken);
+    const adminRes = await query('SELECT * FROM users WHERE password_hash = $1 AND role = $2', [adminHash, 'admin']);
+    if (!adminRes.rows[0]) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Check if it's the global topic
+    const topic = (await query('SELECT * FROM topics WHERE id = $1', [topicId])).rows[0];
+    if (!topic) return res.status(404).json({ error: 'Topic not found' });
+    if (topic.slug === 'global') return res.status(400).json({ error: 'Cannot delete Global Chat' });
+
+    // Delete messages first, then topic
+    await query('DELETE FROM messages WHERE topic_id = $1', [topicId]);
+    await query('DELETE FROM topics WHERE id = $1', [topicId]);
+
+    io.emit('topicDeleted', { topicId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[TOPIC] Delete error:', err);
+    res.status(500).json({ error: 'Failed to delete topic' });
+  }
+});
+
 // ==================== SOCKET.IO ====================
 
 io.on('connection', (socket) => {
   socket.on('join', async ({ userId, password }) => {
     try {
       const h = hashPassword(password);
-      const userRes = await pool.query('SELECT * FROM users WHERE id = $1 AND password_hash = $2', [userId, h]);
+      const userRes = await query('SELECT * FROM users WHERE id = $1 AND password_hash = $2', [userId, h]);
       const user = userRes.rows[0];
 
       if (!user) {
@@ -238,13 +400,13 @@ io.on('connection', (socket) => {
         return socket.disconnect();
       }
 
-      const banRes = await pool.query('SELECT * FROM banned_users WHERE user_id = $1', [user.id]);
+      const banRes = await query('SELECT * FROM banned_users WHERE user_id = $1', [user.id]);
       if (banRes.rows[0]) {
         socket.emit('error', 'Suspended');
         return socket.disconnect();
       }
 
-      await pool.query('INSERT INTO active_sessions (socket_id, user_id) VALUES ($1, $2) ON CONFLICT (socket_id) DO UPDATE SET user_id = EXCLUDED.user_id', [socket.id, user.id]);
+      await query('INSERT INTO active_sessions (socket_id, user_id) VALUES ($1, $2) ON CONFLICT (socket_id) DO UPDATE SET user_id = excluded.user_id', [socket.id, user.id]);
 
       connectedUsers.set(socket.id, {
         id: user.id,
@@ -253,14 +415,23 @@ io.on('connection', (socket) => {
         role: user.role
       });
 
-      socket.join('global_chat');
+      const defaultTopicRes = await query('SELECT id FROM topics WHERE slug = $1', ['global']);
+      const defaultTopicId = defaultTopicRes.rows[0]?.id || 1;
 
-      const historyRes = await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 50');
+      // Join default topic room
+      const roomName = `topic_${defaultTopicId}`;
+      socket.join(roomName);
+
+      // Store current topic in user session (optional, but good for tracking)
+      connectedUsers.get(socket.id).currentTopicId = defaultTopicId;
+
+      const historyRes = await query('SELECT * FROM messages WHERE topic_id = $1 ORDER BY created_at DESC LIMIT 50', [defaultTopicId]);
       const formattedHistory = historyRes.rows.reverse().map(msg => ({
         id: msg.id,
         content: msg.content,
         senderId: msg.sender_anonymous_id,
-        timestamp: msg.created_at
+        timestamp: msg.created_at,
+        topicId: msg.topic_id
       }));
       socket.emit('messageHistory', formattedHistory);
       io.emit('userCount', connectedUsers.size);
@@ -269,59 +440,106 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('sendMessage', async ({ content, senderId }) => {
+  socket.on('joinTopic', async ({ topicId }) => {
     const user = connectedUsers.get(socket.id);
     if (!user) return;
 
+    // Leave current topic rooms
+    const currentRooms = Array.from(socket.rooms).filter(r => r.startsWith('topic_'));
+    currentRooms.forEach(r => socket.leave(r));
+
+    // Join new topic
+    socket.join(`topic_${topicId}`);
+    user.currentTopicId = topicId;
+
+    // Send history for new topic
     try {
-      const result = await pool.query(
-        'INSERT INTO messages (content, sender_id, sender_anonymous_id) VALUES ($1, $2, $3) RETURNING id',
-        [content, user.id, user.anonymousId]
+      const historyRes = await query('SELECT * FROM messages WHERE topic_id = $1 ORDER BY created_at DESC LIMIT 50', [topicId]);
+      const formattedHistory = historyRes.rows.reverse().map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        senderId: msg.sender_anonymous_id,
+        timestamp: msg.created_at,
+        topicId: msg.topic_id
+      }));
+      socket.emit('messageHistory', formattedHistory);
+    } catch (e) {
+      console.error('Error fetching topic history:', e);
+    }
+  });
+
+  socket.on('sendMessage', async ({ content, senderId, topicId }) => {
+    const user = connectedUsers.get(socket.id);
+    if (!user) return;
+
+    // Default to 'global' if no topic provided
+    let finalTopicId = topicId;
+    if (!finalTopicId) {
+      const globalTopic = await query("SELECT id FROM topics WHERE slug = 'global' LIMIT 1");
+      finalTopicId = globalTopic.rows[0]?.id || 1;
+    }
+
+    try {
+      const result = await query(
+        'INSERT INTO messages (content, sender_id, sender_anonymous_id, topic_id) VALUES ($1, $2, $3, $4)',
+        [content, user.id, user.anonymousId, finalTopicId]
       );
 
       const newMessage = {
-        id: result.rows[0].id,
+        id: result.lastID,
         content,
         senderId: user.anonymousId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        topicId: finalTopicId
       };
 
       socket.emit('messageAck', { tempId: senderId, message: newMessage });
-      socket.to('global_chat').emit('receiveMessage', newMessage);
+      socket.to(`topic_${finalTopicId}`).emit('receiveMessage', newMessage);
     } catch (e) {
       console.error('[MESSAGE] Error:', e);
     }
   });
 
-  socket.on('typing', () => socket.to('global_chat').emit('userTyping', socket.id));
-  socket.on('stopTyping', () => socket.to('global_chat').emit('userStopTyping', socket.id));
+  socket.on('typing', (topicId) => socket.to(`topic_${topicId || 1}`).emit('userTyping', socket.id));
+  socket.on('stopTyping', (topicId) => socket.to(`topic_${topicId || 1}`).emit('userStopTyping', socket.id));
 
   socket.on('disconnect', async () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
-      await pool.query('DELETE FROM active_sessions WHERE socket_id = $1', [socket.id]);
+      await query('DELETE FROM active_sessions WHERE socket_id = $1', [socket.id]);
       connectedUsers.delete(socket.id);
       io.emit('userCount', connectedUsers.size);
     }
   });
 
-  socket.on('admin:clearChat', async () => {
+  socket.on('admin:clearChat', async ({ topicId }) => {
     const user = connectedUsers.get(socket.id);
     if (user?.role !== 'admin') return;
-    await pool.query('DELETE FROM messages');
-    io.to('global_chat').emit('messageHistory', []);
-    io.to('global_chat').emit('system_message', { content: 'Chat cleared by admin.' });
+
+    // Clear only for specific topic if provided, else all? preferably specific topic.
+    // Let's assume global clear for now unless topic is specified, but better to enforce topic.
+    // If topicId is provided
+    if (topicId) {
+      await query('DELETE FROM messages WHERE topic_id = $1', [topicId]);
+      io.to(`topic_${topicId}`).emit('messageHistory', []);
+      io.to(`topic_${topicId}`).emit('system_message', { content: 'Chat cleared by admin.' });
+    } else {
+      // Legacy 'nuke everything'
+      await query('DELETE FROM messages');
+      io.emit('messageHistory', []); // This might be messy if people are in different rooms.
+      // Ideally we should emit to all rooms.
+    }
   });
 
   socket.on('admin:banUser', async ({ targetAnonId, reason }) => {
     const user = connectedUsers.get(socket.id);
     if (user?.role !== 'admin' || !targetAnonId) return;
 
-    const targetRes = await pool.query('SELECT id FROM users WHERE anonymous_id = $1', [targetAnonId]);
+    const targetRes = await query('SELECT id FROM users WHERE anonymous_id = $1', [targetAnonId]);
     const targetUser = targetRes.rows[0];
     if (!targetUser) return;
 
-    await pool.query('INSERT INTO banned_users (user_id, reason) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING', [targetUser.id, reason || 'Banned']);
+    await query('INSERT INTO banned_users (user_id, reason) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING', [targetUser.id, reason || 'Banned']);
     io.to('global_chat').emit('system_message', { content: `User #${targetAnonId} has been banned.` });
 
     for (const [sid, u] of connectedUsers.entries()) {

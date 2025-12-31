@@ -9,6 +9,10 @@ export const useStore = create(persist((set) => ({
     typingUsers: 0,
     onlineCount: 0,
 
+    topics: [],
+    currentTopic: null, // {id, name, slug, description}
+
+
     login: (userData) => {
         set({
             user: {
@@ -40,6 +44,24 @@ export const useStore = create(persist((set) => ({
     setTypingUsers: (count) => set({ typingUsers: count }),
 
     setOnlineCount: (count) => set({ onlineCount: count }),
+
+    setTopics: (topics) => set({ topics }),
+    setCurrentTopic: (topic) => set({ currentTopic: topic }),
+    addTopic: (topic) => set((state) => {
+        if (state.topics.some(t => t.id === topic.id)) return state;
+        return { topics: [...state.topics, topic] };
+    }),
+    updateTopic: (topic) => set((state) => ({
+        topics: state.topics.map(t => t.id === topic.id ? topic : t),
+        currentTopic: state.currentTopic?.id === topic.id ? topic : state.currentTopic
+    })),
+    deleteTopic: (topicId) => set((state) => {
+        const newTopics = state.topics.filter(t => t.id !== topicId);
+        return {
+            topics: newTopics,
+            currentTopic: state.currentTopic?.id === topicId ? (newTopics.find(t => t.slug === 'global') || newTopics[0] || null) : state.currentTopic
+        };
+    }),
 
     announcements: [],
     setAnnouncements: (announcements) => set({ announcements }),

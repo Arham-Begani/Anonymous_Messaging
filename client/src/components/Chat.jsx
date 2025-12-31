@@ -295,7 +295,7 @@ export default function Chat({ socket }) {
                                     className="w-1 h-1 rounded-full animate-pulse"
                                     style={{ backgroundColor: currentTopic?.accent_color || '#3b82f6' }}
                                 />
-                                {onlineCount || 0} ACTIVE NODES
+                                {onlineCount || 0} ACTIVE MEMBERS
                             </p>
                         </div>
                     </div>

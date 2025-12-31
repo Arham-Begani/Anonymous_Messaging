@@ -28,6 +28,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     // User list
     const [userList, setUserList] = useState([]);
     const [listLoading, setListLoading] = useState(false);
+    const [userSearch, setUserSearch] = useState('');
     // Create Topic
     const [showCreateTopic, setShowCreateTopic] = useState(false);
     const [newTopicName, setNewTopicName] = useState('');

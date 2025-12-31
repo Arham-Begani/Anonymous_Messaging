@@ -5,6 +5,7 @@ import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, 
 import Sidebar from './Sidebar';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import GifPicker from 'gif-picker-react';
+import imageCompression from 'browser-image-compression';
 
 export default function Chat({ socket }) {
     const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount, tenorApiKey, currentTopic } = useStore();
@@ -159,9 +160,6 @@ export default function Chat({ socket }) {
         const file = e.target.files[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
             // Optimistic UI: Send a "uploading" message
             const tempId = generateUUID();
@@ -173,6 +171,26 @@ export default function Chat({ socket }) {
                 status: 'sending'
             });
 
+            let uploadFile = file;
+
+            // Compress if it's an image
+            if (file.type.startsWith('image/')) {
+                const options = {
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 1920,
+                    useWebWorker: true,
+                    initialQuality: 0.8
+                };
+                try {
+                    uploadFile = await imageCompression(file, options);
+                } catch (error) {
+                    console.error('Compression failed, using original file', error);
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('file', uploadFile);
+
             const res = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
@@ -181,14 +199,29 @@ export default function Chat({ socket }) {
             if (!res.ok) throw new Error('Upload failed');
             const data = await res.json();
 
-            // Replace temp message with actual media URL by sending new message
-            setMessages(useStore.getState().messages.filter(m => m.id !== tempId));
+            // UPDATE the temp message with real content instead of deleting and re-sending
+            updateMessage(tempId, { content: data.url, status: 'sending' });
 
-            socket.emit('sendMessage', { content: data.url, senderId: user?.anonymousId, topicId: currentTopic?.id });
+            // Pass tempId as senderId param (hacky but effective for messageAck) 
+            // OR ideally, update backend to accept tempId separate from senderId.
+            // But checking backend code: socket.on('messageAck', { tempId: senderId, ... })
+            // So if we pass tempId as senderId, backend echoes it back as tempId.
+            // BUT wait, backend also uses senderId for DB insertion:
+            // const result = await query(insertSql, [content, user.id, user.anonymousId, finalTopicId]);
+            // Backend uses `user.anonymousId` (from session) for DB, NOT the `senderId` param for insertion?
+            // Let's verify backend usage of `senderId` param.
+            // Backend: socket.on('sendMessage', async ({ content, senderId, topicId }) => { ... })
+            // And: socket.emit('messageAck', { tempId: senderId, message: newMessage });
+            // It ONLY uses `senderId` param to echo back as `tempId`. 
+            // The DB insertion uses `user.id` and `user.anonymousId` from the socket session.
+            // So passing `tempId` as `senderId` is SAFE and CORRECT for this pattern.
+
+            socket.emit('sendMessage', { content: data.url, senderId: tempId, topicId: currentTopic?.id });
 
         } catch (err) {
             console.error('Upload error:', err);
             alert('File upload failed');
+            // setMessages(useStore.getState().messages.filter(m => m.id !== tempId)); // Optionally remove failed message
         }
     };
 

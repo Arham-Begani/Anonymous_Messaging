@@ -22,7 +22,18 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    // Ensure we have an extension
+    let ext = path.extname(file.originalname);
+    if (!ext || ext === '.') {
+      // Fallback based on mimetype
+      if (file.mimetype === 'image/jpeg') ext = '.jpg';
+      else if (file.mimetype === 'image/png') ext = '.png';
+      else if (file.mimetype === 'image/gif') ext = '.gif';
+      else if (file.mimetype === 'image/webp') ext = '.webp';
+      else if (file.mimetype === 'video/mp4') ext = '.mp4';
+      else ext = '.bin';
+    }
+    cb(null, uniqueSuffix + ext);
   }
 });
 

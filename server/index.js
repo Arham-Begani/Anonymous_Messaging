@@ -19,6 +19,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Helper for hashing
 function hashPassword(plain) {
@@ -26,43 +27,50 @@ function hashPassword(plain) {
 }
 
 // Database selection
-const isPostgres = !!process.env.DATABASE_URL;
+let isPostgres = !!process.env.DATABASE_URL;
 let db;
 let pool;
 
-if (isPostgres) {
-  console.log('[DB] Using PostgreSQL');
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
-} else {
-  console.log('[DB] Using local SQLite');
-  db = new sqlite3.Database(path.join(__dirname, 'chat_users.db'), (err) => {
-    if (err) console.error('[DB] Connection error:', err);
-    else console.log('[DB] SQLite connected.');
-  });
+async function setupDatabase() {
+  if (isPostgres) {
+    try {
+      console.log('[DB] Attempting PostgreSQL connection...');
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000
+      });
+      // Test connection
+      await pool.query('SELECT 1');
+      console.log('[DB] PostgreSQL connected successfully.');
+    } catch (err) {
+      console.error('[DB] PostgreSQL connection failed, falling back to SQLite:', err.message);
+      isPostgres = false;
+      pool = null;
+    }
+  }
+
+  if (!isPostgres) {
+    console.log('[DB] Using local SQLite');
+    db = new sqlite3.Database(path.join(__dirname, 'chat_users.db'), (err) => {
+      if (err) console.error('[DB] SQLite connection error:', err);
+      else console.log('[DB] SQLite connected.');
+    });
+  }
 }
 
 // Helper for promise-based queries
 function query(sql, params = []) {
-  if (isPostgres) {
+  if (isPostgres && pool) {
     return pool.query(sql, params);
   } else {
-    // Convert $1, $2... to ? for SQLite
     const sqliteSql = sql.replace(/\$(\d+)/g, '?');
     return new Promise((resolve, reject) => {
-      if (sqliteSql.trim().toLowerCase().startsWith('select')) {
-        db.all(sqliteSql, params, (err, rows) => {
-          if (err) reject(err);
-          else resolve({ rows });
-        });
-      } else {
-        db.run(sqliteSql, params, function (err) {
-          if (err) reject(err);
-          else resolve({ rows: [], lastID: this.lastID, lastId: this.lastID, changes: this.changes });
-        });
-      }
+      const method = sqliteSql.trim().toLowerCase().startsWith('select') ? 'all' : 'run';
+      db[method](sqliteSql, params, function (err, rows) {
+        if (err) reject(err);
+        else resolve({ rows: rows || [], lastID: this?.lastID, lastId: this?.lastID, changes: this?.changes });
+      });
     });
   }
 }
@@ -191,8 +199,6 @@ async function initDb() {
   }
 }
 
-initDb();
-
 // Connected users map
 const connectedUsers = new Map();
 
@@ -297,12 +303,13 @@ app.post('/api/admin/create-announcement', async (req, res) => {
     const admin = adminRes.rows[0];
     if (!admin) return res.status(403).json({ error: 'Unauthorized' });
 
-    const result = await query(
-      'INSERT INTO announcements (content, author_id) VALUES ($1, $2)',
-      [content, admin.id]
-    );
+    const insertSql = isPostgres
+      ? 'INSERT INTO announcements (content, author_id) VALUES ($1, $2) RETURNING id'
+      : 'INSERT INTO announcements (content, author_id) VALUES ($1, $2)';
 
-    const announcement = (await query('SELECT * FROM announcements WHERE id = $1', [result.lastID])).rows[0];
+    const result = await query(insertSql, [content, admin.id]);
+    const annId = isPostgres ? result.rows[0].id : result.lastID;
+    const announcement = (await query('SELECT * FROM announcements WHERE id = $1', [annId])).rows[0];
     io.emit('newAnnouncement', announcement);
 
     // Also send a system message to the chat
@@ -342,16 +349,19 @@ app.post('/api/admin/create-topic', async (req, res) => {
 
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     if (!slug) return res.status(400).json({ error: 'Invalid name' });
-    const result = await query(
-      'INSERT INTO topics (name, slug, description, created_by) VALUES ($1, $2, $3, $4)',
-      [name, slug, description || '', admin.id]
-    );
+    const insertSql = isPostgres
+      ? 'INSERT INTO topics (name, slug, description, created_by) VALUES ($1, $2, $3, $4) RETURNING id'
+      : 'INSERT INTO topics (name, slug, description, created_by) VALUES ($1, $2, $3, $4)';
 
-    const topic = (await query('SELECT * FROM topics WHERE id = ?', [result.lastID])).rows[0];
+    const result = await query(insertSql, [name, slug, description || '', admin.id]);
+    const topicId = isPostgres ? result.rows[0].id : result.lastID;
+    const topic = (await query('SELECT * FROM topics WHERE id = $1', [topicId])).rows[0];
     io.emit('newTopic', topic);
     res.json({ success: true, topic });
   } catch (err) {
-    if (err.code === '23505') return res.status(400).json({ error: 'Topic already exists' });
+    if (err.code === '23505' || err.code === 'SQLITE_CONSTRAINT') {
+      return res.status(400).json({ error: 'Topic already exists' });
+    }
     console.error('[TOPIC] Create error:', err);
     res.status(500).json({ error: 'Failed' });
   }
@@ -513,13 +523,14 @@ io.on('connection', (socket) => {
     }
 
     try {
-      const result = await query(
-        'INSERT INTO messages (content, sender_id, sender_anonymous_id, topic_id) VALUES ($1, $2, $3, $4)',
-        [content, user.id, user.anonymousId, finalTopicId]
-      );
+      const insertSql = isPostgres
+        ? 'INSERT INTO messages (content, sender_id, sender_anonymous_id, topic_id) VALUES ($1, $2, $3, $4) RETURNING id'
+        : 'INSERT INTO messages (content, sender_id, sender_anonymous_id, topic_id) VALUES ($1, $2, $3, $4)';
+
+      const result = await query(insertSql, [content, user.id, user.anonymousId, finalTopicId]);
 
       const newMessage = {
-        id: result.lastID,
+        id: isPostgres ? result.rows[0].id : result.lastID,
         content,
         senderId: user.anonymousId,
         timestamp: new Date().toISOString(),
@@ -587,10 +598,32 @@ io.on('connection', (socket) => {
   });
 });
 
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('[UNHANDLED ERROR]', err);
+  res.status(500).json({ error: 'Internal Server Error', details: err.message });
+});
+
 // Fallback to React app for any other routes
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+async function startServer() {
+  await setupDatabase();
+  await initDb();
+
+  const PORT = process.env.PORT || 3001;
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is busy. Please close other processes or try a different port.`);
+      process.exit(1);
+    } else {
+      console.error('Server start error:', err);
+    }
+  });
+}
+
+startServer();

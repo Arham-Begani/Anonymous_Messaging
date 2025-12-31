@@ -588,8 +588,8 @@ io.on('connection', (socket) => {
 
       if (!msg) return;
 
-      // Allow if admin or if sender
-      if (user.role === 'admin' || msg.sender_id === user.id) {
+      // Allow if admin or if sender (normalize to strings for safety)
+      if (user.role === 'admin' || String(msg.sender_id) === String(user.id)) {
         await query('DELETE FROM messages WHERE id = $1', [messageId]);
         io.to(`topic_${topicId}`).emit('messageDeleted', { messageId, topicId });
       }

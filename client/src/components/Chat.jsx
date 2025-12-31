@@ -475,7 +475,7 @@ export default function Chat({ socket }) {
                                                                 socket.emit('deleteMessage', { messageId: msg.id, topicId: currentTopic?.id });
                                                             }
                                                         }}
-                                                        className="ml-2 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="ml-2 text-red-500/50 hover:text-red-500 opacity-60 hover:opacity-100 transition-opacity"
                                                         title="Delete Message"
                                                     >
                                                         <Trash2 size={12} />

@@ -16,18 +16,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const [onlineUsersList, setOnlineUsersList] = useState([]);
     const [onlineUsersLoading, setOnlineUsersLoading] = useState(false);
 
-    const { socket } = useStore(); // Assuming socket is available in store or passed as prop (will check)
-    // Actually socket is not in store, it's passed to Chat. need to access it here or use request-response if available
-    // Check line 7: const { ... } = useStore();
-    // Sidebar doesn't receive socket prop!
-    // I need to use the `socket` from props if passed, or import the socket instance if it's a singleton.
-    // Looking at App.jsx, socket is passed to Chat, but not Sidebar.
-    // I should check if I can access socket globally or if I need to pass it.
-    // Wait, Sidebar is imported in Chat.jsx? No, Sidebar is used in Chat.jsx (line 5).
-    // Let's check Chat.jsx again.
-    // Yes, Sidebar is a child of Chat.
-    // I should pass socket prop to Sidebar in Chat.jsx.
-    // But for now, let's assume I'll fix the prop passing.
+
 
 
     const [announcementLoading, setAnnouncementLoading] = useState(false);

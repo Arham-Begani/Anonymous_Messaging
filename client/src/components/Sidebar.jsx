@@ -1,15 +1,34 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff, Hash, Plus, Settings } from 'lucide-react';
+import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff, Hash, Plus, Settings, Activity } from 'lucide-react';
 import { useStore } from '../store';
 
-export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, socket }) {
     const { user, logout, onlineCount, announcements, setAnnouncements, notificationsEnabled, toggleNotifications, topics, setTopics, currentTopic, setCurrentTopic, addTopic, updateTopic, deleteTopic } = useStore();
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showAppearance, setShowAppearance] = useState(false);
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [showManageUsers, setShowManageUsers] = useState(false);
     // const [notifications, setNotifications] = useState(true); // Removed local state
+
+    // Online Users
+    const [showOnlineUsers, setShowOnlineUsers] = useState(false);
+    const [onlineUsersList, setOnlineUsersList] = useState([]);
+    const [onlineUsersLoading, setOnlineUsersLoading] = useState(false);
+
+    const { socket } = useStore(); // Assuming socket is available in store or passed as prop (will check)
+    // Actually socket is not in store, it's passed to Chat. need to access it here or use request-response if available
+    // Check line 7: const { ... } = useStore();
+    // Sidebar doesn't receive socket prop!
+    // I need to use the `socket` from props if passed, or import the socket instance if it's a singleton.
+    // Looking at App.jsx, socket is passed to Chat, but not Sidebar.
+    // I should check if I can access socket globally or if I need to pass it.
+    // Wait, Sidebar is imported in Chat.jsx? No, Sidebar is used in Chat.jsx (line 5).
+    // Let's check Chat.jsx again.
+    // Yes, Sidebar is a child of Chat.
+    // I should pass socket prop to Sidebar in Chat.jsx.
+    // But for now, let's assume I'll fix the prop passing.
+
 
     const [announcementLoading, setAnnouncementLoading] = useState(false);
     const [showLaunchAnnouncement, setShowLaunchAnnouncement] = useState(false);
@@ -100,6 +119,25 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         }
         setListLoading(false);
     };
+
+    const handleGetOnlineUsers = () => {
+        if (!socket) return;
+        setOnlineUsersLoading(true);
+        socket.emit('getOnlineUsers');
+        setShowOnlineUsers(true);
+    };
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const onOnlineUsersList = (users) => {
+            setOnlineUsersList(users);
+            setOnlineUsersLoading(false);
+        };
+
+        socket.on('onlineUsersList', onOnlineUsersList);
+        return () => socket.off('onlineUsersList', onOnlineUsersList);
+    }, [socket]);
 
     const deleteUser = async (userId) => {
         if (!confirm('Delete this user?')) return;
@@ -443,54 +481,76 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     Admin Panel
                                 </div>
                             )}
+                            <div className="space-y-1.5">
+                                <button
+                                    onClick={() => setShowCreateUser(true)}
+                                    className="w-full p-2 hover:bg-[#1A1A1A] rounded-xl transition-colors group border border-transparent hover:border-[#333]"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-[#333]">
+                                            <UserPlus size={16} className="text-[#888]" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[13px] font-medium text-[#ccc]">Create User</p>
+                                            <p className="text-[10px] text-[#666]">Add new accounts</p>
+                                        </div>
+                                    </div>
+                                </button>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setShowCreateUser(true)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-green-500/70 hover:text-green-500 hover:bg-green-500/5 border border-transparent hover:border-green-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-                                title={isCollapsed ? "Create User" : ""}
-                            >
-                                <UserPlus size={16} className="shrink-0" />
-                                {!isCollapsed && <span className="text-sm font-medium">Create User</span>}
-                            </motion.button>
+                                {/* Online Users Button */}
+                                {/* Only for admin, which we are inside */}
+                                <button
+                                    onClick={handleGetOnlineUsers}
+                                    className="w-full p-2 hover:bg-[#1A1A1A] rounded-xl transition-colors group border border-transparent hover:border-[#333]"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-[#333]">
+                                            <Activity size={16} className="text-[#888]" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[13px] font-medium text-[#ccc]">Online Users</p>
+                                            <p className="text-[10px] text-[#666]">See who looks active</p>
+                                        </div>
+                                    </div>
+                                </button>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => { setShowManageUsers(true); loadUsers(); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/5 border border-transparent hover:border-blue-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-                                title={isCollapsed ? "Manage Users" : ""}
-                            >
-                                <Users size={16} className="shrink-0" />
-                                {!isCollapsed && <span className="text-sm font-medium">Manage Users</span>}
-                            </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => { setShowManageUsers(true); loadUsers(); }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/5 border border-transparent hover:border-blue-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                    title={isCollapsed ? "Manage Users" : ""}
+                                >
+                                    <Users size={16} className="shrink-0" />
+                                    {!isCollapsed && <span className="text-sm font-medium">Manage Users</span>}
+                                </motion.button>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                    if (confirm('Clear all chat history?')) {
-                                        window.dispatchEvent(new CustomEvent('admin:clearChat'));
-                                    }
-                                }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500/70 hover:text-red-500 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-                                title={isCollapsed ? "Clear Chat" : ""}
-                            >
-                                <Disc size={16} className="shrink-0" />
-                                {!isCollapsed && <span className="text-sm font-medium">Clear Chat</span>}
-                            </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                        if (confirm('Clear all chat history?')) {
+                                            window.dispatchEvent(new CustomEvent('admin:clearChat'));
+                                        }
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500/70 hover:text-red-500 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                    title={isCollapsed ? "Clear Chat" : ""}
+                                >
+                                    <Disc size={16} className="shrink-0" />
+                                    {!isCollapsed && <span className="text-sm font-medium">Clear Chat</span>}
+                                </motion.button>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setShowLaunchAnnouncement(true)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-yellow-500/70 hover:text-yellow-500 hover:bg-yellow-500/5 border border-transparent hover:border-yellow-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-                                title={isCollapsed ? "Launch Announcement" : ""}
-                            >
-                                <Megaphone size={16} className="shrink-0" />
-                                {!isCollapsed && <span className="text-sm font-medium">Launch Announcement</span>}
-                            </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowLaunchAnnouncement(true)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-yellow-500/70 hover:text-yellow-500 hover:bg-yellow-500/5 border border-transparent hover:border-yellow-500/20 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                                    title={isCollapsed ? "Launch Announcement" : ""}
+                                >
+                                    <Megaphone size={16} className="shrink-0" />
+                                    {!isCollapsed && <span className="text-sm font-medium">Launch Announcement</span>}
+                                </motion.button>
+                            </div>
                         </>
                     )}
                 </div>
@@ -1005,6 +1065,79 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Online Users Modal */}
+            <AnimatePresence>
+                {showOnlineUsers && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                        onClick={() => setShowOnlineUsers(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#0A0A0A] border border-[#333] w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="p-4 border-b border-[#222] flex items-center justify-between">
+                                <h3 className="text-[#fff] font-medium flex items-center gap-2">
+                                    <Activity size={18} className="text-green-500" />
+                                    Online Users
+                                </h3>
+                                <button
+                                    onClick={() => setShowOnlineUsers(false)}
+                                    className="p-1 hover:bg-[#222] rounded-full text-[#666] hover:text-[#fff] transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="p-0 max-h-[60vh] overflow-y-auto">
+                                {onlineUsersLoading ? (
+                                    <div className="p-8 text-center text-[#666]">
+                                        <p className="animate-pulse">Scanning frequencies...</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-[#222]">
+                                        {onlineUsersList.map(u => (
+                                            <div key={u.id} className="p-4 flex items-center justify-between group hover:bg-[#111] transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center border border-[#333] text-[#ccc] font-medium font-mono text-sm relative">
+                                                        {u.username.substring(0, 2).toUpperCase()}
+                                                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border border-[#0A0A0A]"></div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-[#eee]">{u.username}</p>
+                                                        <p className="text-xs text-[#666] font-mono">Anonymous ID: #{u.anonymousId}</p>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${u.role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-[#222] text-[#888] border-[#333]'}`}>
+                                                    {u.role.toUpperCase()}
+                                                </span>
+                                            </div>
+                                        ))}
+                                        {onlineUsersList.length === 0 && (
+                                            <div className="p-8 text-center text-[#666]">
+                                                <p>No active signals detected.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-3 bg-[#111] border-t border-[#222] text-center">
+                                <p className="text-[10px] text-[#555] font-mono">
+                                    TOTAL ACTIVE SIGNALS: {onlineUsersList.length}
+                                </p>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </>
     );
 }

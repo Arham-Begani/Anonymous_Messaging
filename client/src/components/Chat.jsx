@@ -293,6 +293,7 @@ export default function Chat({ socket }) {
                 onClose={() => setSidebarOpen(false)}
                 isCollapsed={sidebarCollapsed}
                 onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                socket={socket}
             />
 
             {/* Main Chat Area */}

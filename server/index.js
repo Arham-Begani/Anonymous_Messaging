@@ -601,6 +601,20 @@ io.on('connection', (socket) => {
   socket.on('typing', (topicId) => socket.to(`topic_${topicId || 1}`).emit('userTyping', socket.id));
   socket.on('stopTyping', (topicId) => socket.to(`topic_${topicId || 1}`).emit('userStopTyping', socket.id));
 
+  socket.on('getOnlineUsers', () => {
+    const user = connectedUsers.get(socket.id);
+    if (!user || user.role !== 'admin') return;
+
+    const users = Array.from(connectedUsers.values()).map(u => ({
+      username: u.username,
+      anonymousId: u.anonymousId,
+      role: u.role,
+      id: u.id
+    }));
+
+    socket.emit('onlineUsersList', users);
+  });
+
   socket.on('disconnect', async () => {
     const user = connectedUsers.get(socket.id);
     if (user) {

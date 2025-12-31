@@ -6,7 +6,7 @@ import Login from './components/Login';
 import Chat from './components/Chat';
 
 export default function App() {
-    const { user, isAuthenticated, setConnected, logout, login } = useStore();
+    const { user, isAuthenticated, setConnected, logout, login, addTopic, updateTopic, deleteTopic } = useStore();
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -45,6 +45,18 @@ export default function App() {
 
             newSocket.on('disconnect', () => {
                 setConnected(false);
+            });
+
+            newSocket.on('newTopic', (topic) => {
+                addTopic(topic);
+            });
+
+            newSocket.on('topicUpdated', (topic) => {
+                updateTopic(topic);
+            });
+
+            newSocket.on('topicDeleted', ({ topicId }) => {
+                deleteTopic(topicId);
             });
 
             socketRef.current = newSocket;

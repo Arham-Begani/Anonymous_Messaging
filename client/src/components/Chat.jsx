@@ -15,6 +15,7 @@ export default function Chat({ socket }) {
     const typingTimeoutRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
+    const [showQuickEmojis, setShowQuickEmojis] = useState(false);
     const inputRef = useRef(null);
     const quickEmojis = ['❤️', '😂', '🙌', '🔥', '👏', '😮', '😢', '😍'];
 
@@ -139,6 +140,7 @@ export default function Chat({ socket }) {
 
         addMessage(localMsg);
         setInput('');
+        setShowQuickEmojis(false);
         handleTyping(false);
 
         socket.emit('sendMessage', { content, senderId: user?.anonymousId, topicId: currentTopic?.id }, (ack) => {
@@ -164,6 +166,7 @@ export default function Chat({ socket }) {
             inputRef.current.focus();
             const newPos = selectionStart + emojiData.emoji.length;
             inputRef.current.setSelectionRange(newPos, newPos);
+            setShowQuickEmojis(false);
         }, 10);
     };
 
@@ -480,23 +483,38 @@ export default function Chat({ socket }) {
                 >
                     <div className="max-w-4xl mx-auto flex flex-col gap-3">
                         {/* Quick Emojis Bar */}
-                        <div className="flex items-center gap-2 px-1 overflow-x-auto no-scrollbar">
-                            {quickEmojis.map(emoji => (
-                                <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => onEmojiClick({ emoji })}
-                                    className="text-lg hover:scale-125 transition-transform p-1 animate-in fade-in slide-in-from-bottom-1"
+                        <AnimatePresence>
+                            {showQuickEmojis && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
                                 >
-                                    {emoji}
-                                </button>
-                            ))}
-                        </div>
+                                    <div className="flex items-center gap-2 px-1 pb-2 overflow-x-auto no-scrollbar">
+                                        {quickEmojis.map(emoji => (
+                                            <button
+                                                key={emoji}
+                                                type="button"
+                                                onClick={() => onEmojiClick({ emoji })}
+                                                className="text-lg hover:scale-125 transition-transform p-1 animate-in fade-in slide-in-from-bottom-1"
+                                            >
+                                                {emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <form onSubmit={handleSend} className="relative flex items-center group">
                             <div className="absolute left-3 flex items-center">
-                                <button type="button" className="p-1.5 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all group/plus">
-                                    <Plus size={20} strokeWidth={2.5} className="group-hover/plus:rotate-90 transition-transform" />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickEmojis(!showQuickEmojis)}
+                                    className={`p-1.5 rounded-lg transition-all group/plus ${showQuickEmojis ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                >
+                                    <Plus size={20} strokeWidth={2.5} className={`transition-transform duration-300 ${showQuickEmojis ? 'rotate-45' : ''}`} />
                                 </button>
                             </div>
 

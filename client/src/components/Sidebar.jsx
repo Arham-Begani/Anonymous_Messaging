@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Globe, Users, Megaphone, Palette, LogOut, Disc, X, Moon, Bell, BellOff, Shield, UserPlus, Trash2, Eye, EyeOff, Hash, Plus, Settings } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }) {
-    const { user, logout, onlineCount, announcements, setAnnouncements, notificationsEnabled, toggleNotifications } = useStore();
+    const { user, logout, onlineCount, announcements, setAnnouncements, notificationsEnabled, toggleNotifications, topics, setTopics, currentTopic, setCurrentTopic, addTopic, updateTopic, deleteTopic } = useStore();
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [showAppearance, setShowAppearance] = useState(false);
     const [showCreateUser, setShowCreateUser] = useState(false);
@@ -28,7 +28,25 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     // User list
     const [userList, setUserList] = useState([]);
     const [listLoading, setListLoading] = useState(false);
-    const [userSearch, setUserSearch] = useState('');
+    // Create Topic
+    const [showCreateTopic, setShowCreateTopic] = useState(false);
+    const [newTopicName, setNewTopicName] = useState('');
+    const [newTopicDesc, setNewTopicDesc] = useState('');
+    const [createTopicLoading, setCreateTopicLoading] = useState(false);
+    const [createTopicMsg, setCreateTopicMsg] = useState('');
+
+    // Edit Topic
+    const [showEditTopic, setShowEditTopic] = useState(false);
+    const [editingTopic, setEditingTopic] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editDesc, setEditDesc] = useState('');
+    const [editBgColor, setEditBgColor] = useState('#0A0A0A');
+    const [editTextColor, setEditTextColor] = useState('#FFFFFF');
+    const [editAccentColor, setEditAccentColor] = useState('#3B82F6');
+    const [editAnimation, setEditAnimation] = useState('none');
+    const [editUsernameColor, setEditUsernameColor] = useState('#888888');
+    const [editLoading, setEditLoading] = useState(false);
+    const [editMsg, setEditMsg] = useState('');
 
 
 
@@ -108,8 +126,129 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         setAnnouncementLoading(false);
     };
 
+    const loadTopics = async () => {
+        try {
+            const res = await fetch('/api/topics');
+            const data = await res.json();
+            if (res.ok) {
+                setTopics(data.topics);
+                // Set default topic if none selected
+                if (!currentTopic && data.topics.length > 0) {
+                    const global = data.topics.find(t => t.slug === 'global') || data.topics[0];
+                    setCurrentTopic(global);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load topics');
+        }
+    };
+
+    const handleCreateTopic = async (e) => {
+        e.preventDefault();
+        setCreateTopicLoading(true);
+        setCreateTopicMsg('');
+
+        try {
+            const res = await fetch('/api/admin/create-topic', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminToken: user.token,
+                    name: newTopicName,
+                    description: newTopicDesc
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                setCreateTopicMsg('✓ Topic Created');
+                addTopic(data.topic);
+                setCurrentTopic(data.topic); // Switch to the new topic
+                setNewTopicName('');
+                setNewTopicDesc('');
+                setTimeout(() => setShowCreateTopic(false), 1500);
+            } else {
+                setCreateTopicMsg(`✗ ${data.error}`);
+            }
+        } catch (err) {
+            setCreateTopicMsg('✗ Failed to create topic');
+        }
+        setCreateTopicLoading(false);
+    };
+
+    const openEditTopic = (topic) => {
+        setEditingTopic(topic);
+        setEditName(topic.name);
+        setEditDesc(topic.description || '');
+        setEditBgColor(topic.bg_color || '#0A0A0A');
+        setEditTextColor(topic.text_color || '#FFFFFF');
+        setEditAccentColor(topic.accent_color || '#3B82F6');
+        setEditAnimation(topic.animation || 'none');
+        setEditUsernameColor(topic.username_color || '#888888');
+        setEditMsg('');
+        setShowEditTopic(true);
+    };
+
+    const handleUpdateTopic = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        setEditMsg('');
+        try {
+            const res = await fetch('/api/admin/update-topic', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminToken: user.token,
+                    topicId: editingTopic.id,
+                    name: editName,
+                    description: editDesc,
+                    bg_color: editBgColor,
+                    text_color: editTextColor,
+                    accent_color: editAccentColor,
+                    animation: editAnimation,
+                    username_color: editUsernameColor
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setEditMsg('✓ Updated');
+                // Use store action
+                updateTopic(data.topic);
+                setTimeout(() => setShowEditTopic(false), 1000);
+            } else {
+                setEditMsg(`✗ ${data.error}`);
+            }
+        } catch (err) {
+            setEditMsg('✗ Failed to update');
+        }
+        setEditLoading(false);
+    };
+
+    const handleDeleteTopic = async () => {
+        if (!confirm(`Delete "${editingTopic.name}" and all its messages?`)) return;
+        setEditLoading(true);
+        try {
+            const res = await fetch('/api/admin/delete-topic', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminToken: user.token, topicId: editingTopic.id })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                deleteTopic(editingTopic.id);
+                setShowEditTopic(false);
+            } else {
+                setEditMsg(`✗ ${data.error}`);
+            }
+        } catch (err) {
+            setEditMsg('✗ Failed to delete');
+        }
+        setEditLoading(false);
+    };
+
     useEffect(() => {
         loadAnnouncements();
+        loadTopics();
     }, []);
 
     const handleLaunchAnnouncement = async (e) => {
@@ -187,6 +326,72 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
                 {/* Main Menu */}
                 <div className={`flex-1 px-3 py-6 space-y-1 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
+                    <div className="my-2 px-3">
+                        <div className={`flex items-center justify-between group mb-4 ${isCollapsed ? 'justify-center' : ''}`}>
+                            {!isCollapsed && (
+                                <div className="flex flex-col">
+                                    <h3 className="text-[10px] font-bold text-[#444] uppercase tracking-[0.2em]">Transmission Hub</h3>
+                                    <span className="text-[8px] text-[#222] protocol-text">DISTRIBUTED_CHANNELS_v2.0</span>
+                                </div>
+                            )}
+                            {user?.role === 'admin' && !isCollapsed && (
+                                <motion.button
+                                    whileHover={{ rotate: 90 }}
+                                    onClick={() => setShowCreateTopic(true)}
+                                    className="text-[#444] hover:text-white transition-colors bg-[#111] p-1 rounded-md border border-[#1A1A1A]"
+                                >
+                                    <Plus size={14} />
+                                </motion.button>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            {[...topics]
+                                .sort((a, b) => (a.slug === 'global' ? -1 : b.slug === 'global' ? 1 : a.name.localeCompare(b.name)))
+                                .map(topic => (
+                                    <motion.button
+                                        key={topic.id}
+                                        whileHover={{ x: isCollapsed ? 0 : 4, backgroundColor: '#111' }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => {
+                                            setCurrentTopic(topic);
+                                            if (window.innerWidth < 768) onClose(); // Close sidebar on mobile
+                                        }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group ${isCollapsed ? 'justify-center px-0' : ''} ${currentTopic?.id === topic.id ? 'bg-[#111] border-[#222] text-white shadow-[0_0_15px_rgba(255,255,255,0.02)]' : 'border-transparent text-[#555] hover:text-white'}`}
+                                        title={isCollapsed ? topic.name : ""}
+                                    >
+                                        <div className={`p-1.5 rounded-lg transition-colors`} style={{ backgroundColor: topic.accent_color ? `${topic.accent_color}10` : undefined, color: topic.accent_color || undefined }}>
+                                            {topic.slug === 'global' ? <Globe size={16} /> : <Hash size={16} />}
+                                        </div>
+                                        {!isCollapsed && (
+                                            <div className="flex flex-col items-start overflow-hidden flex-1">
+                                                <span className="text-[13px] font-semibold truncate w-full">{topic.name}</span>
+                                                {topic.description && (
+                                                    <span className="text-[9px] text-[#333] truncate w-full group-hover:text-[#444] transition-colors">
+                                                        {topic.description}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        {user?.role === 'admin' && !isCollapsed && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); openEditTopic(topic); }}
+                                                className="p-1 rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity text-[#444] hover:text-white"
+                                            >
+                                                <Settings size={12} />
+                                            </button>
+                                        )}
+                                        {currentTopic?.id === topic.id && !isCollapsed && (
+                                            <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_white]" />
+                                        )}
+                                    </motion.button>
+                                ))}
+                        </div>
+                    </div>
+
+                    <div className="my-6 h-px bg-gradient-to-r from-transparent via-[#111] to-transparent" />
+
+
+                    {/*
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -198,13 +403,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                             <div className={`${isCollapsed ? 'absolute top-2 right-2' : 'ml-auto'} w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_white] animate-pulse`} />
                         )}
                     </motion.button>
-
-                    <div className={`px-3 py-2.5 flex items-center gap-3 text-[#666] ${isCollapsed ? 'justify-center px-0' : ''}`}>
-                        <Users size={16} className="shrink-0" />
-                        {!isCollapsed && <span className="text-sm font-medium">{onlineCount || 0} Online</span>}
-                    </div>
-
-                    <div className="my-4 h-px bg-[#111]" />
+                    */}
 
                     <motion.button
                         whileHover={{ scale: 1.02, x: isCollapsed ? 0 : 4 }}
@@ -542,6 +741,74 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 )}
             </AnimatePresence>
 
+
+            {/* Create Topic Modal */}
+            <AnimatePresence>
+                {showCreateTopic && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowCreateTopic(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Hash size={20} className="text-white" />
+                                    Create New Channel
+                                </h2>
+                                <button onClick={() => setShowCreateTopic(false)} className="text-[#666] hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateTopic} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Channel Name</label>
+                                    <input
+                                        value={newTopicName}
+                                        onChange={(e) => setNewTopicName(e.target.value)}
+                                        className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#333]"
+                                        placeholder="e.g. random"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-[#666] protocol-text mb-1 block">Description (Optional)</label>
+                                    <input
+                                        value={newTopicDesc}
+                                        onChange={(e) => setNewTopicDesc(e.target.value)}
+                                        className="w-full bg-[#111] border border-[#1A1A1A] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#333]"
+                                        placeholder="e.g. for random discussions"
+                                    />
+                                </div>
+
+                                {createTopicMsg && (
+                                    <p className={`text-[10px] protocol-text ${createTopicMsg.startsWith('✓') ? 'text-green-500' : 'text-red-500'}`}>
+                                        {createTopicMsg}
+                                    </p>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={createTopicLoading}
+                                    className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                >
+                                    {createTopicLoading ? 'Creating...' : 'Create Channel'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Launch Announcement Modal */}
             <AnimatePresence>
                 {showLaunchAnnouncement && (
@@ -651,6 +918,82 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                     </button>
                                 </div>
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Topic Modal */}
+            <AnimatePresence>
+                {showEditTopic && editingTopic && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowEditTopic(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full max-w-md bg-black border border-[#1A1A1A] rounded-2xl overflow-hidden"
+                        >
+                            <div className="p-4 border-b border-[#1A1A1A] flex items-center justify-between">
+                                <h2 className="text-white font-bold">Edit Topic</h2>
+                                <button onClick={() => setShowEditTopic(false)} className="text-[#444] hover:text-white"><X size={18} /></button>
+                            </div>
+                            <form onSubmit={handleUpdateTopic} className="p-4 space-y-4">
+                                <div>
+                                    <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Name</label>
+                                    <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full bg-[#111] border border-[#1A1A1A] rounded-lg px-3 py-2 text-white text-sm focus:border-white/20 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Description</label>
+                                    <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-[#111] border border-[#1A1A1A] rounded-lg px-3 py-2 text-white text-sm focus:border-white/20 outline-none" />
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Accent</label>
+                                        <input type="color" value={editAccentColor} onChange={e => setEditAccentColor(e.target.value)} className="w-full h-10 bg-[#111] border border-[#1A1A1A] rounded-lg cursor-pointer" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Background</label>
+                                        <input type="color" value={editBgColor} onChange={e => setEditBgColor(e.target.value)} className="w-full h-10 bg-[#111] border border-[#1A1A1A] rounded-lg cursor-pointer" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Text</label>
+                                        <input type="color" value={editTextColor} onChange={e => setEditTextColor(e.target.value)} className="w-full h-10 bg-[#111] border border-[#1A1A1A] rounded-lg cursor-pointer" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Username</label>
+                                        <input type="color" value={editUsernameColor} onChange={e => setEditUsernameColor(e.target.value)} className="w-full h-10 bg-[#111] border border-[#1A1A1A] rounded-lg cursor-pointer" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-[#444] uppercase tracking-wider mb-1 block">Animation</label>
+                                        <select value={editAnimation} onChange={e => setEditAnimation(e.target.value)} className="w-full bg-[#111] border border-[#1A1A1A] rounded-lg px-3 h-10 text-white text-sm focus:border-white/20 outline-none">
+                                            <option value="none">None</option>
+                                            <option value="pulse">Pulse</option>
+                                            <option value="glow">Glow</option>
+                                            <option value="shake">Shake</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                {editMsg && <p className={`text-xs ${editMsg.startsWith('✓') ? 'text-green-500' : 'text-red-500'}`}>{editMsg}</p>}
+                                <div className="flex gap-2">
+                                    <button type="submit" disabled={editLoading} className="flex-1 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 disabled:opacity-50">
+                                        {editLoading ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                    {editingTopic.slug !== 'global' && (
+                                        <button type="button" onClick={handleDeleteTopic} disabled={editLoading} className="px-4 py-2 bg-red-500/20 text-red-500 rounded-lg text-sm font-medium hover:bg-red-500/30 disabled:opacity-50">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
                         </motion.div>
                     </motion.div>
                 )}

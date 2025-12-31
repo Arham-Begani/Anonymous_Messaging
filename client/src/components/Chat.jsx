@@ -40,7 +40,11 @@ export default function Chat({ socket }) {
 
     const isMedia = (text) => {
         if (typeof text !== 'string') return false;
-        const isUrl = text.startsWith('http') || text.startsWith('/uploads/');
+        // Trust all /uploads/ paths as media, regardless of extension 
+        // (since we control the upload folder and it only contains media)
+        if (text.startsWith('/uploads/')) return true;
+
+        const isUrl = text.startsWith('http');
         return isUrl && (
             text.match(/\.(jpeg|jpg|gif|png|webp|mp4)$/i) ||
             text.includes('media.tenor.com') ||
@@ -182,7 +186,9 @@ export default function Chat({ socket }) {
                     initialQuality: 0.8
                 };
                 try {
-                    uploadFile = await imageCompression(file, options);
+                    const compressedBlob = await imageCompression(file, options);
+                    // Re-create File object to preserve name and type
+                    uploadFile = new File([compressedBlob], file.name, { type: file.type });
                 } catch (error) {
                     console.error('Compression failed, using original file', error);
                 }

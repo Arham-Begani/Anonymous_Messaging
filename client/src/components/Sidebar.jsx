@@ -78,7 +78,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 setCreateMessage(`✗ ${data.error}`);
             }
         } catch (err) {
-            setCreateMessage('✗ Failed to create user');
+            setCreateMessage('✗ Failed to create user :(');
         }
         setCreateLoading(false);
     };
@@ -96,7 +96,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 setUserList(data.users);
             }
         } catch (err) {
-            console.error('Failed to load users');
+            console.error('Failed to load users :(');
         }
         setListLoading(false);
     };
@@ -246,6 +246,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         }
         setEditLoading(false);
     };
+
+    useEffect(() => {
+        if (showAnnouncements) {
+            loadAnnouncements();
+        }
+    }, [showAnnouncements]);
 
     useEffect(() => {
         loadAnnouncements();

@@ -313,7 +313,7 @@ app.post('/api/admin/create-announcement', async (req, res) => {
     io.emit('newAnnouncement', announcement);
 
     // Also send a system message to the chat
-    io.to('global_chat').emit('receiveMessage', {
+    io.emit('receiveMessage', {
       id: `sys-${Date.now()}`,
       content: `📢 ANNOUNCEMENT: ${content}`,
       senderId: 'SYSTEM',

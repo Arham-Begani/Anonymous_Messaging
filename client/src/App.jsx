@@ -6,7 +6,7 @@ import Login from './components/Login';
 import Chat from './components/Chat';
 
 export default function App() {
-    const { user, isAuthenticated, setConnected, logout, login, addTopic, updateTopic, deleteTopic } = useStore();
+    const { user, isAuthenticated, setConnected, logout, login, addTopic, updateTopic, deleteTopic, addAnnouncement } = useStore();
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -57,6 +57,10 @@ export default function App() {
 
             newSocket.on('topicDeleted', ({ topicId }) => {
                 deleteTopic(topicId);
+            });
+
+            newSocket.on('newAnnouncement', (announcement) => {
+                addAnnouncement(announcement);
             });
 
             socketRef.current = newSocket;

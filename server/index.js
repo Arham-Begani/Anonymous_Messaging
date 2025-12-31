@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { Pool } = require('pg');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const crypto = require('crypto');
@@ -19,140 +20,172 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
 // Helper for hashing
 function hashPassword(plain) {
   return crypto.createHash('sha256').update(plain).digest('hex');
 }
 
-// Database connection
-const db = new sqlite3.Database(path.join(__dirname, 'chat_users.db'), (err) => {
-  if (err) console.error('[DB] Connection error:', err);
-  else console.log('[DB] SQLite connected.');
-});
+// Database selection
+const isPostgres = !!process.env.DATABASE_URL;
+let db;
+let pool;
+
+if (isPostgres) {
+  console.log('[DB] Using PostgreSQL');
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+} else {
+  console.log('[DB] Using local SQLite');
+  db = new sqlite3.Database(path.join(__dirname, 'chat_users.db'), (err) => {
+    if (err) console.error('[DB] Connection error:', err);
+    else console.log('[DB] SQLite connected.');
+  });
+}
 
 // Helper for promise-based queries
 function query(sql, params = []) {
-  // Convert $1, $2... to ? for SQLite
-  const sqliteSql = sql.replace(/\$(\d+)/g, '?');
-  return new Promise((resolve, reject) => {
-    if (sqliteSql.trim().toLowerCase().startsWith('select')) {
-      db.all(sqliteSql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve({ rows });
-      });
-    } else {
-      db.run(sqliteSql, params, function (err) {
-        if (err) reject(err);
-        else resolve({ rows: [], lastID: this.lastID, changes: this.changes });
-      });
-    }
-  });
+  if (isPostgres) {
+    return pool.query(sql, params);
+  } else {
+    // Convert $1, $2... to ? for SQLite
+    const sqliteSql = sql.replace(/\$(\d+)/g, '?');
+    return new Promise((resolve, reject) => {
+      if (sqliteSql.trim().toLowerCase().startsWith('select')) {
+        db.all(sqliteSql, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve({ rows });
+        });
+      } else {
+        db.run(sqliteSql, params, function (err) {
+          if (err) reject(err);
+          else resolve({ rows: [], lastID: this.lastID, lastId: this.lastID, changes: this.changes });
+        });
+      }
+    });
+  }
 }
 
 
 async function initDb() {
+  const pk = isPostgres ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+  const timestamp = isPostgres ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP';
+
   try {
     // Users table
     await query(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${pk},
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT DEFAULT 'user',
       anonymous_id INTEGER NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at ${timestamp}
     )`);
 
     await query(`CREATE TABLE IF NOT EXISTS active_sessions (
       socket_id TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL,
-      login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      login_time ${timestamp}
     )`);
 
     await query(`CREATE TABLE IF NOT EXISTS topics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${pk},
       name TEXT UNIQUE NOT NULL,
       slug TEXT UNIQUE NOT NULL,
       description TEXT,
       created_by INTEGER,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at ${timestamp}
     )`);
 
     await query(`CREATE TABLE IF NOT EXISTS announcements (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${pk},
       content TEXT NOT NULL,
       author_id INTEGER,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at ${timestamp}
     )`);
 
     await query(`CREATE TABLE IF NOT EXISTS banned_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${pk},
       user_id INTEGER UNIQUE NOT NULL,
       reason TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at ${timestamp}
     )`);
 
-    // Migration: Add created_by to topics if missing
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN created_by INTEGER`);
-    } catch (e) { }
+    // Migration: Add new columns if missing
+    const migrations = [
+      { table: 'topics', column: 'created_by', type: 'INTEGER' },
+      { table: 'topics', column: 'bg_color', type: 'TEXT DEFAULT \'#0A0A0A\'' },
+      { table: 'topics', column: 'text_color', type: 'TEXT DEFAULT \'#FFFFFF\'' },
+      { table: 'topics', column: 'accent_color', type: 'TEXT DEFAULT \'#3B82F6\'' },
+      { table: 'topics', column: 'animation', type: 'TEXT DEFAULT \'none\'' },
+      { table: 'topics', column: 'username_color', type: 'TEXT DEFAULT \'#888888\'' }
+    ];
 
-    // Migration: Add customization fields to topics
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN bg_color TEXT DEFAULT '#0A0A0A'`);
-    } catch (e) { }
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN text_color TEXT DEFAULT '#FFFFFF'`);
-    } catch (e) { }
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN accent_color TEXT DEFAULT '#3B82F6'`);
-    } catch (e) { }
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN animation TEXT DEFAULT 'none'`);
-    } catch (e) { }
-    try {
-      await query(`ALTER TABLE topics ADD COLUMN username_color TEXT DEFAULT '#888888'`);
-    } catch (e) { }
+    for (const m of migrations) {
+      try {
+        await query(`ALTER TABLE ${m.table} ADD COLUMN ${m.column} ${m.type}`);
+      } catch (e) {
+        // console.log(`Migration skipped: ${m.table}.${m.column} already exists`);
+      }
+    }
 
-    // Seed default topic
-    await query(`
-      INSERT OR IGNORE INTO topics (name, slug, description) 
-      VALUES ('Global Chat', 'global', 'The main lobby for everyone')
-    `);
+    // Seed default topic using Postgres-safe syntax
+    if (isPostgres) {
+      await query(`
+        INSERT INTO topics (name, slug, description) 
+        VALUES ('Global Chat', 'global', 'The main lobby for everyone')
+        ON CONFLICT (slug) DO NOTHING
+      `);
+    } else {
+      await query(`
+        INSERT OR IGNORE INTO topics (name, slug, description) 
+        VALUES ('Global Chat', 'global', 'The main lobby for everyone')
+      `);
+    }
 
     await query(`CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id ${pk},
       content TEXT NOT NULL,
       sender_id INTEGER,
       sender_anonymous_id INTEGER,
       topic_id INTEGER DEFAULT 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at ${timestamp}
     )`);
 
-    // Migration: Add topic_id if it doesn't exist
+    // Migration for messages
     try {
       await query(`ALTER TABLE messages ADD COLUMN topic_id INTEGER DEFAULT 1`);
-    } catch (e) {
-      // Ignored if column exists
-    }
+    } catch (e) { }
 
-    // Update existing messages with NULL or old defaults to the new 'global' topic ID
+    // Update existing messages
     const globalTopic = await query("SELECT id FROM topics WHERE slug = 'global'");
     if (globalTopic.rows[0]) {
       const gid = globalTopic.rows[0].id;
-      await query(`UPDATE messages SET topic_id = $1 WHERE topic_id IS NULL OR topic_id = 1`, [gid]);
+      if (isPostgres) {
+        await query(`UPDATE messages SET topic_id = $1 WHERE topic_id IS NULL`, [gid]);
+      } else {
+        await query(`UPDATE messages SET topic_id = $1 WHERE topic_id IS NULL OR topic_id = 1`, [gid]);
+      }
     }
-
     const adminHash = hashPassword('admin123');
     const adminAnonId = 0;
-    await query(
-      `INSERT OR IGNORE INTO users (username, password_hash, role, anonymous_id) 
-       VALUES ($1, $2, 'admin', $3)`,
-      ['admin', adminHash, adminAnonId]
-    );
-    console.log('[DB] SQLite initialized and admin account verified.');
+
+    if (isPostgres) {
+      await query(
+        `INSERT INTO users (username, password_hash, role, anonymous_id) 
+         VALUES ($1, $2, 'admin', $3)
+         ON CONFLICT (username) DO NOTHING`,
+        ['admin', adminHash, adminAnonId]
+      );
+    } else {
+      await query(
+        `INSERT OR IGNORE INTO users (username, password_hash, role, anonymous_id) 
+         VALUES ($1, $2, 'admin', $3)`,
+        ['admin', adminHash, adminAnonId]
+      );
+    }
+    console.log('[DB] Database initialized and admin account verified.');
   } catch (err) {
     console.error('[DB] Initialization error:', err);
   }

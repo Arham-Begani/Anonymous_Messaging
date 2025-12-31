@@ -48,7 +48,7 @@ export const useStore = create(persist((set) => ({
         return { announcements: [ann, ...state.announcements] };
     }),
 
-    tenorApiKey: '',
+    tenorApiKey: 'AIzaSyAMjD_Xz6RQ9GbtZ3KrhSBVrAR6st97Lu4',
     setTenorApiKey: (key) => set({ tenorApiKey: key }),
 
     notificationsEnabled: true,
@@ -58,7 +58,6 @@ export const useStore = create(persist((set) => ({
     partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        tenorApiKey: state.tenorApiKey,
         notificationsEnabled: state.notificationsEnabled
     }),
 }));

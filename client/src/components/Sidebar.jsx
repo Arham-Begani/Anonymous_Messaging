@@ -30,7 +30,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     const [listLoading, setListLoading] = useState(false);
     const [userSearch, setUserSearch] = useState('');
 
-    const { tenorApiKey, setTenorApiKey } = useStore();
+
 
     const handleCreateUser = async (e) => {
         e.preventDefault();
@@ -627,32 +627,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 </button>
                             </div>
                             <div className="space-y-4">
-                                <div className="p-4 bg-[#111] rounded-xl border border-[#1A1A1A] hover:border-[#222] transition-colors">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <Disc size={18} className="text-blue-500" />
-                                            <span className="text-sm text-white">Tenor API Key</span>
-                                        </div>
-                                        <a
-                                            href="https://tenor.com/developer/key-registration"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[10px] text-blue-500 hover:underline protocol-text flex items-center gap-1"
-                                        >
-                                            GET KEY
-                                        </a>
-                                    </div>
-                                    <input
-                                        type="password"
-                                        value={tenorApiKey}
-                                        onChange={(e) => setTenorApiKey(e.target.value)}
-                                        placeholder="Paste key here for GIF support..."
-                                        className="w-full bg-black border border-[#1A1A1A] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-[#333]"
-                                    />
-                                    <p className="text-[9px] text-[#444] mt-2 leading-tight">
-                                        Required for GIF search. Keys are encrypted in your local browser storage.
-                                    </p>
-                                </div>
+
 
                                 <div className="flex items-center justify-between p-4 bg-[#111] rounded-xl border border-[#1A1A1A]">
                                     <div className="flex items-center gap-3">

@@ -39,7 +39,8 @@ export default function Chat({ socket }) {
 
     const isMedia = (text) => {
         if (typeof text !== 'string') return false;
-        return text.startsWith('http') && (
+        const isUrl = text.startsWith('http') || text.startsWith('/uploads/');
+        return isUrl && (
             text.match(/\.(jpeg|jpg|gif|png|webp|mp4)$/i) ||
             text.includes('media.tenor.com') ||
             text.includes('giphy.com')

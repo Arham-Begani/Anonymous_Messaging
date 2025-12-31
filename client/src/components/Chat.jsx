@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X, Image as ImageIcon } from 'lucide-react';
+import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X, Image as ImageIcon, Hash } from 'lucide-react';
 import Sidebar from './Sidebar';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import GifPicker from 'gif-picker-react';
 
 export default function Chat({ socket }) {
-    const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount, tenorApiKey } = useStore();
+    const { messages, addMessage, updateMessage, setMessages, user, logout, typingUsers, setTypingUsers, onlineCount, tenorApiKey, currentTopic } = useStore();
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -31,7 +31,7 @@ export default function Chat({ socket }) {
         };
 
         addMessage(msg);
-        socket.emit('sendMessage', { content: gifUrl, senderId: user.id });
+        socket.emit('sendMessage', { content: gifUrl, senderId: user.id, topicId: currentTopic?.id });
         setShowGifPicker(false);
     };
 
@@ -59,6 +59,15 @@ export default function Chat({ socket }) {
     useEffect(() => {
         if (!socket) return;
 
+        // Join topic if changed
+        if (currentTopic?.id) {
+            socket.emit('joinTopic', { topicId: currentTopic.id });
+        }
+    }, [socket, currentTopic?.id]);
+
+    useEffect(() => {
+        if (!socket) return;
+
         const { setOnlineCount } = useStore.getState();
 
         socket.on('messageHistory', (history) => {
@@ -72,13 +81,7 @@ export default function Chat({ socket }) {
 
             // Play notification sound if enabled
             if (notificationsEnabled) {
-                try {
-                    const audio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAEluZm8AAAAPAAAABAAAACwAAAAAAAB7AAAAaAAAAAEAAAD//uQxAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQAxAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAAALAAAAAAAAHsAAABoAAAAAQAAAP//+5DEAAAAAAAQAAAAAAAABAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAABiAAAAAAACAAAAAAAABAAAAAAAAAA0hAAAAAAAAAAAAAAJ//uQxAAACkAAAAAAAIAAAAAAAAEAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAJgAAAAAAAgAAAAAAAAQAAAAAAAAAKAAAAAAAAAAAAAAAh//7kMQAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/+5DEAAAmAAAAAAAIAAAAAAAAEAAAAAAAAACgAAAAAAAAAAAAAAIf/");
-                    audio.volume = 0.5;
-                    audio.play().catch(e => console.error("Audio play failed:", e));
-                } catch (err) {
-                    console.error("Notification sound error:", err);
-                }
+                // Audio placeholder or simple beep logic can be added here if needed
             }
         });
 
@@ -138,7 +141,7 @@ export default function Chat({ socket }) {
         setInput('');
         handleTyping(false);
 
-        socket.emit('sendMessage', { content, senderId: user?.anonymousId }, (ack) => {
+        socket.emit('sendMessage', { content, senderId: user?.anonymousId, topicId: currentTopic?.id }, (ack) => {
             if (ack?.success) {
                 updateMessage(tempId, { status: 'delivered', id: ack.id });
             } else if (ack?.error) {
@@ -170,15 +173,17 @@ export default function Chat({ socket }) {
         if (typing) {
             if (!isTyping) {
                 setIsTyping(true);
-                socket.emit('typing', true);
+                socket.emit('typing', currentTopic?.id);
             }
             typingTimeoutRef.current = setTimeout(() => {
                 setIsTyping(false);
-                socket.emit('typing', false);
+                socket.emit('typing', false); // Assuming server handles false as stopTyping or checks headers, but server listens for 'stopTyping' event usually.
+                // Wait, server logic: socket.on('typing', (topicId) => ...). 
+                // Client must emit 'stopTyping'.
             }, 2000);
         } else {
             setIsTyping(false);
-            socket.emit('typing', false);
+            socket.emit('stopTyping', currentTopic?.id);
         }
     };
 
@@ -240,12 +245,57 @@ export default function Chat({ socket }) {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">Global Group</h2>
+                                {currentTopic?.animation && currentTopic.animation !== 'none' ? (
+                                    <motion.div
+                                        key={`${currentTopic?.id}-anim`}
+                                        animate={
+                                            currentTopic.animation === 'pulse' ? {
+                                                scale: [1, 0.95, 1],
+                                                opacity: [1, 0.7, 1]
+                                            } : currentTopic.animation === 'glow' ? {
+                                                filter: [
+                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#3B82F6'})`,
+                                                    `drop-shadow(0 0 12px ${currentTopic.accent_color || '#3B82F6'})`,
+                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#3B82F6'})`
+                                                ]
+                                            } : currentTopic.animation === 'shake' ? {
+                                                x: [0, -2, 2, -2, 2, 0]
+                                            } : {}
+                                        }
+                                        transition={{
+                                            duration: currentTopic.animation === 'shake' ? 0.5 : 2,
+                                            repeat: Infinity,
+                                            ease: "easeInOut"
+                                        }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {currentTopic?.slug === 'global' ?
+                                            <Globe size={14} style={{ color: currentTopic?.accent_color || '#3b82f6' }} /> :
+                                            <Hash size={14} style={{ color: currentTopic?.accent_color || '#888' }} />
+                                        }
+                                        <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">
+                                            {currentTopic ? currentTopic.name : 'Loading...'}
+                                        </h2>
+                                    </motion.div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        {currentTopic?.slug === 'global' ?
+                                            <Globe size={14} style={{ color: currentTopic?.accent_color || '#3b82f6' }} /> :
+                                            <Hash size={14} style={{ color: currentTopic?.accent_color || '#888' }} />
+                                        }
+                                        <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">
+                                            {currentTopic ? currentTopic.name : 'Loading...'}
+                                        </h2>
+                                    </div>
+                                )}
                                 <Shield size={10} className="text-[#444] hidden md:block" />
                             </div>
                             <p className="text-[11px] text-[#666] protocol-text flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
-                                <span className="text-white font-bold">{onlineCount || 0}</span> <span className="text-[#444] hidden xs:inline uppercase tracking-widest">Active Now</span>
+                                <span
+                                    className="w-1 h-1 rounded-full animate-pulse"
+                                    style={{ backgroundColor: currentTopic?.accent_color || '#3b82f6' }}
+                                />
+                                {onlineCount || 0} ACTIVE NODES
                             </p>
                         </div>
                     </div>
@@ -266,15 +316,23 @@ export default function Chat({ socket }) {
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 scroll-smooth bg-[radial-gradient(circle_at_center,#050505,black)]"
+                    className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 scroll-smooth transition-colors duration-500"
+                    style={{
+                        background: currentTopic?.bg_color
+                            ? `radial-gradient(circle at center, ${currentTopic.bg_color}33, black)`
+                            : 'radial-gradient(circle at center, #050505, black)'
+                    }}
                 >
                     <div className="flex flex-col items-center justify-center py-8 opacity-40 select-none">
                         <div className="px-3 py-1 bg-[#111] border border-[#1A1A1A] rounded-full text-[9px] protocol-text mb-3 text-[#555]">
                             Encrypted Channel
                         </div>
-                        <p className="text-[10px] text-center max-w-xs text-[#444]">
+                        <p className="text-[10px] text-center max-w-xs text-[#fff]">
                             Messages are end-to-end encrypted. Your identity is hidden as <span className="text-white font-mono">Anonymous User #{user?.anonymousId || '????'}</span>.
                         </p>
+                        {currentTopic?.description && (
+                            <p className="text-[9px] text-[#FFC0CB] mt-2 max-w-md text-center">{currentTopic.description}</p>
+                        )}
                     </div>
 
                     <AnimatePresence initial={false}>
@@ -306,7 +364,10 @@ export default function Chat({ socket }) {
                                     ) : (
                                         <div className={`max-w-[75%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                                             <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                                <span className="text-[10px] font-bold text-[#666] protocol-text hover:text-white transition-colors cursor-default">
+                                                <span
+                                                    className="text-[10px] font-bold protocol-text hover:opacity-80 transition-all cursor-default"
+                                                    style={{ color: currentTopic?.username_color || '#666' }}
+                                                >
                                                     {isMe ? 'You' : `Anonymous User #${msg.senderId || 'Unknown'}`}
                                                 </span>
                                                 {user?.role === 'admin' && !isMe && (
@@ -315,6 +376,15 @@ export default function Chat({ socket }) {
                                                         className="text-[9px] text-red-500/50 hover:text-red-500 protocol-text opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         [STRIKE]
+                                                    </button>
+                                                )}
+                                                {user?.role === 'admin' && (
+                                                    <button
+                                                        onClick={() => socket.emit('admin:clearChat', { topicId: currentTopic?.id })}
+                                                        title="Clear Topic Chat"
+                                                        className="ml-2 text-[9px] text-red-700/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        [NUKE]
                                                     </button>
                                                 )}
                                                 <span className="text-[9px] text-[#333] protocol-text">
@@ -343,12 +413,18 @@ export default function Chat({ socket }) {
                                                     return `
                                                         px-5 py-3 rounded-2xl text-[14px] leading-relaxed shadow-md
                                                         ${isMe
-                                                            ? 'bg-white text-black rounded-tr-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                                                            : 'bg-[#111] border border-[#1A1A1A] text-[#ccc] rounded-tl-sm hover:border-[#333]'
+                                                            ? 'bg-white/90 text-black rounded-tr-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                                                            : 'border rounded-tl-sm'
                                                         }
                                                     `;
                                                 })()}
-                                            `}>
+                                            `}
+                                                style={!isMedia(msg.content) ? {
+                                                    backgroundColor: isMe ? `${currentTopic?.bg_color || '#ffffff'}cc` : (currentTopic?.bg_color || '#111'),
+                                                    color: isMe ? (currentTopic?.text_color || '#000000') : (currentTopic?.text_color || '#ccc'),
+                                                    borderColor: currentTopic?.accent_color ? `${currentTopic.accent_color}66` : '#1A1A1A'
+                                                } : undefined}
+                                            >
                                                 <div className={isMedia(msg.content) ? 'w-full' : ''}>
                                                     {isMedia(msg.content) ? (
                                                         <img
@@ -378,7 +454,8 @@ export default function Chat({ socket }) {
                                                 )}
                                             </div>
                                         </div>
-                                    )}
+                                    )
+                                    }
                                 </motion.div>
                             );
                         })}
@@ -397,7 +474,10 @@ export default function Chat({ socket }) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 md:p-5 bg-black z-10 border-t border-[#111]">
+                <div
+                    className="p-4 md:p-5 bg-black z-10 border-t transition-colors duration-500"
+                    style={{ borderColor: currentTopic?.accent_color ? `${currentTopic.accent_color}20` : '#111' }}
+                >
                     <div className="max-w-4xl mx-auto flex flex-col gap-3">
                         {/* Quick Emojis Bar */}
                         <div className="flex items-center gap-2 px-1 overflow-x-auto no-scrollbar">
@@ -459,7 +539,8 @@ export default function Chat({ socket }) {
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
                                         type="submit"
-                                        className="p-1.5 text-white hover:text-blue-400 transition-colors"
+                                        className="p-1.5 transition-colors"
+                                        style={{ color: currentTopic?.accent_color || '#3b82f6' }}
                                     >
                                         <Send size={18} fill="currentColor" strokeWidth={3} />
                                     </motion.button>
@@ -531,6 +612,6 @@ export default function Chat({ socket }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -7,6 +7,29 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +42,8 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Helper for hashing
@@ -328,6 +353,14 @@ app.post('/api/admin/create-announcement', async (req, res) => {
   }
 });
 
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ url: fileUrl, type: req.file.mimetype });
+});
+
 app.get('/api/topics', async (req, res) => {
   try {
     const result = await query('SELECT * FROM topics ORDER BY created_at ASC');
@@ -541,6 +574,27 @@ io.on('connection', (socket) => {
       socket.to(`topic_${finalTopicId}`).emit('receiveMessage', newMessage);
     } catch (e) {
       console.error('[MESSAGE] Error:', e);
+    }
+  });
+
+
+  socket.on('deleteMessage', async ({ messageId, topicId }) => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) return;
+
+      const msgRes = await query('SELECT * FROM messages WHERE id = $1', [messageId]);
+      const msg = msgRes.rows[0];
+
+      if (!msg) return;
+
+      // Allow if admin or if sender
+      if (user.role === 'admin' || msg.sender_id === user.id) {
+        await query('DELETE FROM messages WHERE id = $1', [messageId]);
+        io.to(`topic_${topicId}`).emit('messageDeleted', { messageId, topicId });
+      }
+    } catch (e) {
+      console.error('[MESSAGE] Delete error:', e);
     }
   });
 

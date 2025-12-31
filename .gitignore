@@ -39,3 +39,6 @@ build/
 .project
 .settings/
 .classpath
+
+# Uploads
+server/uploads/

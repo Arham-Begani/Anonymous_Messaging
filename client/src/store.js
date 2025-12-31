@@ -38,7 +38,10 @@ export const useStore = create(persist((set) => ({
     }),
 
     updateMessage: (id, updates) => set((state) => ({
-        messages: state.messages.map(m => m.id === id ? { ...m, ...updates } : m)
+        messages: state.messages.map(msg => msg.id === id ? { ...msg, ...updates } : msg)
+    })),
+    deleteMessage: (id) => set((state) => ({
+        messages: state.messages.filter(msg => msg.id !== id)
     })),
 
     setTypingUsers: (count) => set({ typingUsers: count }),

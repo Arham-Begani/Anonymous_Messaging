@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X, Image as ImageIcon, Hash } from 'lucide-react';
+import { Send, LogOut, Zap, Search, Ban, Paperclip, Smile, Shield, Plus, Globe, X, Image as ImageIcon, Hash, Trash2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import GifPicker from 'gif-picker-react';
@@ -17,6 +17,7 @@ export default function Chat({ socket }) {
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showQuickEmojis, setShowQuickEmojis] = useState(false);
     const inputRef = useRef(null);
+    const fileInputRef = useRef(null);
     const quickEmojis = ['❤️', '😂', '🙌', '🔥', '👏', '😮', '😢', '😍'];
 
     const onGifClick = (gif) => {
@@ -151,6 +152,43 @@ export default function Chat({ socket }) {
                 setMessages(useStore.getState().messages.filter(m => m.id !== tempId));
             }
         });
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Optimistic UI: Send a "uploading" message
+            const tempId = generateUUID();
+            addMessage({
+                id: tempId,
+                content: 'Uploading file...',
+                senderId: user?.anonymousId,
+                timestamp: new Date().toISOString(),
+                status: 'sending'
+            });
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+            const data = await res.json();
+
+            // Replace temp message with actual media URL by sending new message
+            setMessages(useStore.getState().messages.filter(m => m.id !== tempId));
+
+            socket.emit('sendMessage', { content: data.url, senderId: user?.anonymousId, topicId: currentTopic?.id });
+
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('File upload failed');
+        }
     };
 
     const onEmojiClick = (emojiData) => {
@@ -390,7 +428,20 @@ export default function Chat({ socket }) {
                                                         [NUKE]
                                                     </button>
                                                 )}
-                                                <span className="text-[9px] text-[#333] protocol-text">
+                                                {(isMe || user?.role === 'admin') && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Delete this message?')) {
+                                                                socket.emit('deleteMessage', { messageId: msg.id, topicId: currentTopic?.id });
+                                                            }
+                                                        }}
+                                                        className="ml-2 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Delete Message"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                )}
+                                                <span className="text-[9px] text-[#333] protocol-text ml-2">
                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
@@ -430,17 +481,25 @@ export default function Chat({ socket }) {
                                             >
                                                 <div className={isMedia(msg.content) ? 'w-full' : ''}>
                                                     {isMedia(msg.content) ? (
-                                                        <img
-                                                            src={msg.content}
-                                                            alt="Media"
-                                                            className="w-full h-auto rounded-xl object-contain bg-black/50 min-w-[200px] min-h-[100px]"
-                                                            loading="lazy"
-                                                            onLoad={() => {
-                                                                if (shouldAutoScroll) {
-                                                                    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-                                                                }
-                                                            }}
-                                                        />
+                                                        msg.content.match(/\.mp4$/i) ? (
+                                                            <video
+                                                                src={msg.content}
+                                                                controls
+                                                                className="w-full h-auto rounded-xl bg-black/50 min-w-[200px]"
+                                                            />
+                                                        ) : (
+                                                            <img
+                                                                src={msg.content}
+                                                                alt="Media"
+                                                                className="w-full h-auto rounded-xl object-contain bg-black/50 min-w-[200px] min-h-[100px]"
+                                                                loading="lazy"
+                                                                onLoad={() => {
+                                                                    if (shouldAutoScroll) {
+                                                                        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+                                                                    }
+                                                                }}
+                                                            />
+                                                        )
                                                     ) : (
                                                         <p>{msg.content}</p>
                                                     )}
@@ -508,7 +567,22 @@ export default function Chat({ socket }) {
                         </AnimatePresence>
 
                         <form onSubmit={handleSend} className="relative flex items-center group">
-                            <div className="absolute left-3 flex items-center">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFileUpload}
+                                accept="image/*,video/*"
+                            />
+                            <div className="absolute left-3 flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-1.5 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all"
+                                    title="Upload File"
+                                >
+                                    <Paperclip size={20} strokeWidth={2.5} />
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowQuickEmojis(!showQuickEmojis)}
@@ -520,7 +594,7 @@ export default function Chat({ socket }) {
 
                             <input
                                 ref={inputRef}
-                                className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl pl-12 pr-12 py-3.5 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
+                                className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl pl-20 pr-12 py-3.5 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
                                 placeholder="Type payload..."
                                 value={input}
                                 onChange={(e) => {

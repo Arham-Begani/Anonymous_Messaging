@@ -321,7 +321,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className={`
-                    fixed md:relative h-full bg-black border-r border-[#1A1A1A] flex flex-col z-30 font-sans transition-all duration-300 ease-in-out
+                    fixed md:relative h-full bg-background-elevated border-r border-border flex flex-col z-30 font-sans transition-all duration-300 ease-in-out
                     ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 `}
                 style={{
@@ -335,14 +335,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         <motion.div
                             whileHover={{ rotate: 360 }}
                             transition={{ duration: 0.5 }}
-                            className="w-8 h-8 bg-[#111] border border-[#1A1A1A] rounded-lg flex items-center justify-center shrink-0"
+                            className="w-8 h-8 bg-surface border border-border rounded-lg flex items-center justify-center shrink-0"
                         >
-                            <Disc size={18} className="text-white" />
+                            <Disc size={18} className="text-accent" />
                         </motion.div>
                         {!isCollapsed && (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1">
-                                <h1 className="font-bold text-white tracking-tight text-sm uppercase">Backrow</h1>
-                                <p className="text-[9px] text-[#555] protocol-text">V2.5.0</p>
+                                <h1 className="font-bold text-primary tracking-tight text-sm">Backrow</h1>
+                                <p className="text-[9px] text-muted font-medium">V2.5.0</p>
                             </motion.div>
                         )}
                         <button
@@ -350,7 +350,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 e.stopPropagation();
                                 onClose();
                             }}
-                            className="p-2 -mr-2 md:hidden text-[#444] hover:text-white transition-colors"
+                            className="p-2 -mr-2 md:hidden text-muted hover:text-primary transition-colors"
                             aria-label="Close sidebar"
                         >
                             <X size={20} />
@@ -364,15 +364,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         <div className={`flex items-center justify-between group mb-4 ${isCollapsed ? 'justify-center' : ''}`}>
                             {!isCollapsed && (
                                 <div className="flex flex-col">
-                                    <h3 className="text-[10px] font-bold text-[#444] uppercase tracking-[0.2em]">Transmission Hub</h3>
-                                    <span className="text-[8px] text-[#222] protocol-text">DISTRIBUTED_CHANNELS_v2.0</span>
+                                    <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider">Channels</h3>
+                                    <span className="text-[8px] text-muted/50 font-medium">Active Topics</span>
                                 </div>
                             )}
                             {user?.role === 'admin' && !isCollapsed && (
                                 <motion.button
                                     whileHover={{ rotate: 90 }}
                                     onClick={() => setShowCreateTopic(true)}
-                                    className="text-[#444] hover:text-white transition-colors bg-[#111] p-1 rounded-md border border-[#1A1A1A]"
+                                    className="text-muted hover:text-accent transition-colors bg-surface p-1.5 rounded-lg border border-border hover:border-accent/50"
                                 >
                                     <Plus size={14} />
                                 </motion.button>
@@ -384,45 +384,45 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 .map(topic => (
                                     <motion.button
                                         key={topic.id}
-                                        whileHover={{ x: isCollapsed ? 0 : 4, backgroundColor: '#111' }}
+                                        whileHover={{ x: isCollapsed ? 0 : 4 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => {
                                             setCurrentTopic(topic);
                                             if (window.innerWidth < 768) onClose(); // Close sidebar on mobile
                                         }}
-                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group ${isCollapsed ? 'justify-center px-0' : ''} ${currentTopic?.id === topic.id ? 'bg-[#111] border-[#222] text-white shadow-[0_0_15px_rgba(255,255,255,0.02)]' : 'border-transparent text-[#555] hover:text-white'}`}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group ${isCollapsed ? 'justify-center px-0' : ''} ${currentTopic?.id === topic.id ? 'bg-surface border-accent/30 text-primary shadow-card' : 'border-transparent text-secondary hover:text-primary hover:bg-surface/50'}`}
                                         title={isCollapsed ? topic.name : ""}
                                     >
-                                        <div className={`p-1.5 rounded-lg transition-colors`} style={{ backgroundColor: topic.accent_color ? `${topic.accent_color}10` : undefined, color: topic.accent_color || undefined }}>
+                                        <div className={`p-1.5 rounded-lg transition-colors`} style={{ backgroundColor: topic.accent_color ? `${topic.accent_color}15` : 'rgba(99, 102, 241, 0.1)', color: topic.accent_color || '#6366F1' }}>
                                             {topic.slug === 'global' ? <Globe size={16} /> : <Hash size={16} />}
                                         </div>
                                         {!isCollapsed && (
                                             <div className="flex flex-col items-start overflow-hidden flex-1">
                                                 <span className="text-[13px] font-semibold truncate w-full">{topic.name}</span>
                                                 {topic.description && (
-                                                    <span className="text-[9px] text-[#333] truncate w-full group-hover:text-[#444] transition-colors">
+                                                 <span className="text-[9px] text-muted/70 truncate w-full group-hover:text-muted transition-colors">
                                                         {topic.description}
                                                     </span>
                                                 )}
                                             </div>
                                         )}
                                         {user?.role === 'admin' && !isCollapsed && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); openEditTopic(topic); }}
-                                                className="p-1 rounded hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity text-[#444] hover:text-white"
-                                            >
-                                                <Settings size={12} />
-                                            </button>
-                                        )}
-                                        {currentTopic?.id === topic.id && !isCollapsed && (
-                                            <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_8px_white]" />
+                                             <button
+                                                 onClick={(e) => { e.stopPropagation(); openEditTopic(topic); }}
+                                                 className="p-1 rounded hover:bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-accent"
+                                             >
+                                                 <Settings size={12} />
+                                             </button>
+                                         )}
+                                         {currentTopic?.id === topic.id && !isCollapsed && (
+                                             <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-glow-sm" />
                                         )}
                                     </motion.button>
                                 ))}
                         </div>
                     </div>
 
-                    <div className="my-6 h-px bg-gradient-to-r from-transparent via-[#111] to-transparent" />
+                    <div className="my-6 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
 
                     {/*
@@ -443,7 +443,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         whileHover={{ scale: 1.02, x: isCollapsed ? 0 : 4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setShowAnnouncements(true)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-secondary hover:text-primary hover:bg-surface transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
                         title={isCollapsed ? "Announcements" : ""}
                     >
                         <Megaphone size={16} className="shrink-0" />
@@ -454,7 +454,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         whileHover={{ scale: 1.02, x: isCollapsed ? 0 : 4 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setShowAppearance(true)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#111] transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-secondary hover:text-primary hover:bg-surface transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
                         title={isCollapsed ? "Appearance" : ""}
                     >
                         <Palette size={16} className="shrink-0" />
@@ -463,9 +463,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
                     {user?.role === 'admin' && (
                         <>
-                            <div className="my-4 h-px bg-[#111]" />
+                            <div className="my-4 h-px bg-border" />
                             {!isCollapsed && (
-                                <div className="px-3 pb-2 text-[10px] font-bold text-red-500/50 protocol-text uppercase tracking-widest flex items-center gap-2">
+                                <div className="px-3 pb-2 text-[10px] font-bold text-error/70 uppercase tracking-wider flex items-center gap-2">
                                     <Shield size={10} />
                                     Admin Panel
                                 </div>

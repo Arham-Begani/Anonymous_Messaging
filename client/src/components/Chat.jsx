@@ -286,7 +286,7 @@ export default function Chat({ socket }) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     return (
-        <div className="flex h-screen bg-black text-white overflow-hidden font-sans">
+        <div className="flex h-screen bg-background text-primary overflow-hidden font-sans">
             {/* Sidebar component */}
             <Sidebar
                 isOpen={sidebarOpen}
@@ -312,21 +312,21 @@ export default function Chat({ socket }) {
                 </AnimatePresence>
 
                 {/* Chat Header */}
-                <div className="h-16 border-b border-[#1A1A1A] flex items-center justify-between px-4 md:px-6 bg-black/80 backdrop-blur-md z-10 shrink-0">
+                <div className="h-16 border-b border-border flex items-center justify-between px-4 md:px-6 bg-background-elevated/95 backdrop-blur-xl z-10 shrink-0 transition-colors">
                     <div className="flex items-center gap-2 md:gap-3">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="p-2 text-[#666] hover:text-white md:hidden"
+                            className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface md:hidden"
                         >
                             <Zap size={20} />
                         </button>
 
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#111] border border-[#1A1A1A] flex items-center justify-center text-white overflow-hidden relative shadow-lg">
-                            <Globe size={18} className="md:size-5" />
-                            <div className="absolute bottom-0 right-0 w-2 h-2 md:w-2.5 md:h-2.5 bg-green-500 rounded-full border-2 border-black animate-pulse" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent/20 to-accent-hover/20 border border-accent/30 flex items-center justify-center text-accent overflow-hidden relative shadow-glow-sm">
+                            <Globe size={20} />
+                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background-elevated status-pulse" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5">
                                 {currentTopic?.animation && currentTopic.animation !== 'none' ? (
                                     <motion.div
                                         key={`${currentTopic?.id}-anim`}
@@ -336,9 +336,9 @@ export default function Chat({ socket }) {
                                                 opacity: [1, 0.7, 1]
                                             } : currentTopic.animation === 'glow' ? {
                                                 filter: [
-                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#3B82F6'})`,
-                                                    `drop-shadow(0 0 12px ${currentTopic.accent_color || '#3B82F6'})`,
-                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#3B82F6'})`
+                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#6366F1'})`,
+                                                    `drop-shadow(0 0 12px ${currentTopic.accent_color || '#6366F1'})`,
+                                                    `drop-shadow(0 0 2px ${currentTopic.accent_color || '#6366F1'})`
                                                 ]
                                             } : currentTopic.animation === 'shake' ? {
                                                 x: [0, -2, 2, -2, 2, 0]
@@ -352,42 +352,42 @@ export default function Chat({ socket }) {
                                         className="flex items-center gap-2"
                                     >
                                         {currentTopic?.slug === 'global' ?
-                                            <Globe size={14} style={{ color: currentTopic?.accent_color || '#3b82f6' }} /> :
-                                            <Hash size={14} style={{ color: currentTopic?.accent_color || '#888' }} />
+                                            <Globe size={16} style={{ color: currentTopic?.accent_color || '#6366F1' }} /> :
+                                            <Hash size={16} style={{ color: currentTopic?.accent_color || '#888' }} />
                                         }
-                                        <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">
+                                        <h2 className="font-bold text-sm md:text-base tracking-tight text-primary line-clamp-1">
                                             {currentTopic ? currentTopic.name : 'Loading...'}
                                         </h2>
                                     </motion.div>
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         {currentTopic?.slug === 'global' ?
-                                            <Globe size={14} style={{ color: currentTopic?.accent_color || '#3b82f6' }} /> :
-                                            <Hash size={14} style={{ color: currentTopic?.accent_color || '#888' }} />
+                                            <Globe size={16} style={{ color: currentTopic?.accent_color || '#6366F1' }} /> :
+                                            <Hash size={16} style={{ color: currentTopic?.accent_color || '#888' }} />
                                         }
-                                        <h2 className="font-bold text-xs md:text-sm tracking-tight text-white line-clamp-1">
+                                        <h2 className="font-bold text-sm md:text-base tracking-tight text-primary line-clamp-1">
                                             {currentTopic ? currentTopic.name : 'Loading...'}
                                         </h2>
                                     </div>
                                 )}
-                                <Shield size={10} className="text-[#444] hidden md:block" />
+                                <Shield size={12} className="text-muted hidden md:block" />
                             </div>
-                            <p className="text-[11px] text-[#666] protocol-text flex items-center gap-2">
+                            <p className="text-[10px] text-secondary font-medium flex items-center gap-2">
                                 <span
-                                    className="w-1 h-1 rounded-full animate-pulse"
-                                    style={{ backgroundColor: currentTopic?.accent_color || '#3b82f6' }}
+                                    className="w-1.5 h-1.5 rounded-full status-pulse"
+                                    style={{ backgroundColor: currentTopic?.accent_color || '#6366F1' }}
                                 />
-                                {onlineCount || 0} ACTIVE MEMBERS
+                                <span className="font-mono text-[9px] tracking-wider">{onlineCount || 0} ONLINE</span>
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1 md:gap-3">
-                        <button className="p-2 text-[#666] hover:text-white hover:bg-[#111] rounded-lg transition-all hidden sm:block">
+                    <div className="flex items-center gap-1 md:gap-2">
+                        <button className="p-2 text-muted hover:text-primary hover:bg-surface rounded-lg transition-all hidden sm:block">
                             <Search size={18} />
                         </button>
                         <button
                             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            className="p-2 text-[#666] hover:text-white hover:bg-[#111] rounded-lg transition-all hidden md:block"
+                            className="p-2 text-muted hover:text-primary hover:bg-surface rounded-lg transition-all hidden md:block"
                         >
                             <Plus size={18} className={sidebarCollapsed ? 'rotate-45 transition-transform' : 'transition-transform'} />
                         </button>
@@ -398,22 +398,26 @@ export default function Chat({ socket }) {
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 scroll-smooth transition-colors duration-500"
+                    className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-4 custom-scrollbar"
                     style={{
                         background: currentTopic?.bg_color
-                            ? `radial-gradient(circle at center, ${currentTopic.bg_color}33, black)`
-                            : 'radial-gradient(circle at center, #050505, black)'
+                            ? `radial-gradient(ellipse at top, ${currentTopic.bg_color}15, transparent 50%), linear-gradient(to bottom, #0A0B0F, #12141A)`
+                            : 'linear-gradient(to bottom, #0A0B0F, #12141A)'
                     }}
                 >
-                    <div className="flex flex-col items-center justify-center py-8 opacity-40 select-none">
-                        <div className="px-3 py-1 bg-[#111] border border-[#1A1A1A] rounded-full text-[9px] protocol-text mb-3 text-[#555]">
-                            Encrypted Channel
-                        </div>
-                        <p className="text-[10px] text-center max-w-xs text-[#fff]">
-                            Messages are end-to-end encrypted. Your identity is hidden as <span className="text-white font-mono">Anonymous User #{user?.anonymousId || '????'}</span>.
+                    <div className="flex flex-col items-center justify-center py-12 opacity-60 select-none">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="px-4 py-2 bg-surface/50 border border-border rounded-full text-[10px] font-semibold mb-4 text-secondary backdrop-blur-sm"
+                        >
+                            🔒 End-to-End Encrypted
+                        </motion.div>
+                        <p className="text-xs text-center max-w-md text-secondary leading-relaxed">
+                            Your identity is protected as <span className="text-primary font-semibold font-mono">Anonymous User #{user?.anonymousId || '????'}</span>
                         </p>
                         {currentTopic?.description && (
-                            <p className="text-[9px] text-[#FFC0CB] mt-2 max-w-md text-center">{currentTopic.description}</p>
+                            <p className="text-[11px] text-accent mt-3 max-w-md text-center font-medium">{currentTopic.description}</p>
                         )}
                     </div>
 
@@ -440,33 +444,33 @@ export default function Chat({ socket }) {
                                     className={`flex ${isSystem ? 'justify-center' : (isMe ? 'justify-end' : 'justify-start')}`}
                                 >
                                     {isSystem ? (
-                                        <div className="bg-[#111] border border-[#1A1A1A] px-3 py-1 rounded-full">
-                                            <span className="text-[10px] text-[#555] protocol-text">{msg.content}</span>
+                                        <div className="bg-surface/60 border border-border px-4 py-2 rounded-full backdrop-blur-sm">
+                                            <span className="text-[10px] text-secondary font-medium">{msg.content}</span>
                                         </div>
                                     ) : (
                                         <div className={`max-w-[75%] group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                            <div className={`flex items-center gap-2 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                                                 <span
-                                                    className="text-[10px] font-bold protocol-text hover:opacity-80 transition-all cursor-default"
-                                                    style={{ color: currentTopic?.username_color || '#666' }}
+                                                    className="text-[11px] font-semibold hover:opacity-80 transition-opacity cursor-default"
+                                                    style={{ color: currentTopic?.username_color || '#9CA3B4' }}
                                                 >
-                                                    {isMe ? 'You' : `Anonymous User #${msg.senderId || 'Unknown'}`}
+                                                    {isMe ? 'You' : `Anonymous #${msg.senderId || 'Unknown'}`}
                                                 </span>
                                                 {user?.role === 'admin' && !isMe && (
                                                     <button
                                                         onClick={() => handleBan(msg.senderId)}
-                                                        className="text-[9px] text-red-500/50 hover:text-red-500 protocol-text opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="text-[9px] text-error/60 hover:text-error font-medium opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 rounded hover:bg-error/10"
                                                     >
-                                                        [STRIKE]
+                                                        BAN
                                                     </button>
                                                 )}
                                                 {user?.role === 'admin' && (
                                                     <button
                                                         onClick={() => socket.emit('admin:clearChat', { topicId: currentTopic?.id })}
                                                         title="Clear Topic Chat"
-                                                        className="ml-2 text-[9px] text-red-700/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="ml-1 text-[9px] text-error/60 hover:text-error font-medium opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 rounded hover:bg-error/10"
                                                     >
-                                                        [NUKE]
+                                                        CLEAR
                                                     </button>
                                                 )}
                                                 {(isMe || user?.role === 'admin') && (
@@ -476,22 +480,22 @@ export default function Chat({ socket }) {
                                                                 socket.emit('deleteMessage', { messageId: msg.id, topicId: currentTopic?.id });
                                                             }
                                                         }}
-                                                        className="ml-2 text-red-500/50 hover:text-red-500 opacity-60 hover:opacity-100 transition-opacity"
+                                                        className="ml-1 text-muted/60 hover:text-error opacity-0 group-hover:opacity-100 transition-all p-1 rounded hover:bg-error/10"
                                                         title="Delete Message"
                                                     >
-                                                        <Trash2 size={12} />
+                                                        <Trash2 size={11} />
                                                     </button>
                                                 )}
-                                                <span className="text-[9px] text-[#333] protocol-text ml-2">
+                                                <span className="text-[9px] text-muted/50 font-medium ml-auto">
                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
 
                                             <div className={`
-                                                relative transition-all
+                                                relative transition-all duration-200
                                                 ${(() => {
                                                     if (isMedia(msg.content)) {
-                                                        return 'p-1.5 bg-[#111] border border-[#1A1A1A] rounded-2xl overflow-hidden shadow-xl max-w-sm hover:border-[#333]';
+                                                        return 'p-2 bg-surface border border-border rounded-2xl overflow-hidden shadow-card max-w-sm hover:border-border-hover hover:shadow-card-hover';
                                                     }
                                                     // Robust emoji-only check using Unicode Property Escapes
                                                     // \p{Emoji} matches emojis, \p{Extended_Pictographic} matches newer symbols
@@ -502,23 +506,28 @@ export default function Chat({ socket }) {
                                                     const isOnlyEmojis = emojiRegex.test(content) && !/^\d+$/.test(content);
 
                                                     if (isOnlyEmojis) {
-                                                        return 'text-[45px] leading-tight select-none py-2 px-1 animate-in zoom-in-50 duration-300';
+                                                        return 'text-5xl leading-tight select-none py-2 px-2';
                                                     }
 
                                                     return `
-                                                        px-5 py-3 rounded-2xl text-[14px] leading-relaxed shadow-md
+                                                        px-4 py-3 rounded-2xl text-[14px] leading-relaxed shadow-sm
                                                         ${isMe
-                                                            ? 'bg-white/90 text-black rounded-tr-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                                                            : 'border rounded-tl-sm'
+                                                            ? 'bg-gradient-to-br from-accent to-accent-hover text-white rounded-tr-md hover:shadow-glow-sm'
+                                                            : 'bg-bubble-received border border-border rounded-tl-md hover:border-border-hover'
                                                         }
                                                     `;
                                                 })()}
                                             `}
-                                                style={!isMedia(msg.content) ? {
-                                                    backgroundColor: isMe ? `${currentTopic?.bg_color || '#ffffff'}cc` : (currentTopic?.bg_color || '#111'),
-                                                    color: isMe ? (currentTopic?.text_color || '#000000') : (currentTopic?.text_color || '#ccc'),
-                                                    borderColor: currentTopic?.accent_color ? `${currentTopic.accent_color}66` : '#1A1A1A'
-                                                } : undefined}
+                                                style={!isMedia(msg.content) && !(/[\p{Emoji}\p{Extended_Pictographic}]/u.test(msg.content) && !/[a-zA-Z0-9]/.test(msg.content)) ? (
+                                                    isMe ? {
+                                                        background: currentTopic?.bg_color ? `linear-gradient(135deg, ${currentTopic.bg_color}, ${currentTopic.accent_color || '#7C3AED'})` : undefined,
+                                                        color: currentTopic?.text_color || '#ffffff',
+                                                    } : {
+                                                        backgroundColor: currentTopic?.bg_color ? `${currentTopic.bg_color}20` : undefined,
+                                                        color: currentTopic?.text_color || '#E8EBF3',
+                                                        borderColor: currentTopic?.accent_color ? `${currentTopic.accent_color}40` : undefined
+                                                    }
+                                                ) : undefined}
                                             >
                                                 <div className={isMedia(msg.content) ? 'w-full' : ''}>
                                                     {isMedia(msg.content) ? (
@@ -546,41 +555,44 @@ export default function Chat({ socket }) {
                                                     )}
                                                 </div>
 
-                                                {isMe && (
-                                                    <div className={`absolute -bottom-1.5 -right-1 ${(/[\p{Emoji}\p{Extended_Pictographic}]/u.test(msg.content) && !/[a-zA-Z0-9]/.test(msg.content)) || isMedia(msg.content) ? 'opacity-40 invert' : ''}`}>
+                                                {isMe && !(/[\p{Emoji}\p{Extended_Pictographic}]/u.test(msg.content) && !/[a-zA-Z0-9]/.test(msg.content)) && (
+                                                    <div className="absolute -bottom-1 -right-1">
                                                         {isSending ? (
-                                                            <div className="w-2.5 h-2.5 border-[1.5px] border-black/20 border-t-black rounded-full animate-spin" />
+                                                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                                                         ) : (
-                                                            <div className="text-[7px] text-black/40 font-black tracking-tighter">SENT</div>
+                                                            <div className="text-[8px] text-white/60 font-bold tracking-tight">✓✓</div>
                                                         )}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                    )
-                                    }
+                                    )}
                                 </motion.div>
                             );
                         })}
                     </AnimatePresence>
 
                     {typingUsers > 0 && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-[#444] px-1">
-                            <div className="flex gap-1">
-                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} className="w-1 h-1 bg-[#666] rounded-full" />
-                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2, ease: "easeInOut" }} className="w-1 h-1 bg-[#666] rounded-full" />
-                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4, ease: "easeInOut" }} className="w-1 h-1 bg-[#666] rounded-full" />
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }} 
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="flex items-center gap-3 px-2"
+                        >
+                            <div className="flex items-center gap-1 px-3 py-2 bg-surface border border-border rounded-2xl">
+                                <div className="flex gap-1">
+                                    <div className="w-1.5 h-1.5 bg-accent rounded-full typing-dot" />
+                                    <div className="w-1.5 h-1.5 bg-accent rounded-full typing-dot" />
+                                    <div className="w-1.5 h-1.5 bg-accent rounded-full typing-dot" />
+                                </div>
+                                <span className="text-[10px] text-secondary font-medium ml-2">Someone is typing</span>
                             </div>
-                            <span className="text-[9px] protocol-text">Typing...</span>
                         </motion.div>
                     )}
                 </div>
 
                 {/* Input Area */}
-                <div
-                    className="p-4 md:p-5 bg-black z-10 border-t transition-colors duration-500"
-                    style={{ borderColor: currentTopic?.accent_color ? `${currentTopic.accent_color}20` : '#111' }}
-                >
+                <div className="p-4 md:p-5 bg-background-elevated/95 backdrop-blur-xl z-10 border-t border-border">
                     <div className="max-w-4xl mx-auto flex flex-col gap-3">
                         {/* Quick Emojis Bar */}
                         <AnimatePresence>
@@ -591,16 +603,19 @@ export default function Chat({ socket }) {
                                     exit={{ height: 0, opacity: 0 }}
                                     className="overflow-hidden"
                                 >
-                                    <div className="flex items-center gap-2 px-1 pb-2 overflow-x-auto no-scrollbar">
-                                        {quickEmojis.map(emoji => (
-                                            <button
+                                    <div className="flex items-center gap-2 px-2 pb-3 overflow-x-auto no-scrollbar">
+                                        {quickEmojis.map((emoji, idx) => (
+                                            <motion.button
                                                 key={emoji}
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ delay: idx * 0.05 }}
                                                 type="button"
                                                 onClick={() => onEmojiClick({ emoji })}
-                                                className="text-lg hover:scale-125 transition-transform p-1 animate-in fade-in slide-in-from-bottom-1"
+                                                className="text-2xl hover:scale-125 transition-transform p-2 rounded-lg hover:bg-surface"
                                             >
                                                 {emoji}
-                                            </button>
+                                            </motion.button>
                                         ))}
                                     </div>
                                 </motion.div>
@@ -619,24 +634,24 @@ export default function Chat({ socket }) {
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="p-1.5 text-[#444] hover:text-white hover:bg-[#111] rounded-lg transition-all"
+                                    className="p-2 text-muted hover:text-primary hover:bg-surface rounded-lg transition-all"
                                     title="Upload File"
                                 >
-                                    <Paperclip size={20} strokeWidth={2.5} />
+                                    <Paperclip size={20} strokeWidth={2} />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowQuickEmojis(!showQuickEmojis)}
-                                    className={`p-1.5 rounded-lg transition-all group/plus ${showQuickEmojis ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                    className={`p-2 rounded-lg transition-all ${showQuickEmojis ? 'text-accent bg-accent/10' : 'text-muted hover:text-primary hover:bg-surface'}`}
                                 >
-                                    <Plus size={20} strokeWidth={2.5} className={`transition-transform duration-300 ${showQuickEmojis ? 'rotate-45' : ''}`} />
+                                    <Plus size={20} strokeWidth={2} className={`transition-transform duration-300 ${showQuickEmojis ? 'rotate-45' : ''}`} />
                                 </button>
                             </div>
 
                             <input
                                 ref={inputRef}
-                                className="w-full bg-[#0a0a0a] border border-[#1A1A1A] rounded-2xl pl-20 pr-12 py-3.5 text-[14px] text-white focus:outline-none focus:border-[#333] focus:ring-1 focus:ring-[#222] transition-all placeholder:text-[#333] shadow-inner"
-                                placeholder="Type payload..."
+                                className="w-full bg-surface border border-border rounded-2xl pl-20 pr-32 py-3.5 text-[14px] text-primary focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-muted/60"
+                                placeholder="Type a message..."
                                 value={input}
                                 onChange={(e) => {
                                     setInput(e.target.value);
@@ -644,17 +659,17 @@ export default function Chat({ socket }) {
                                 }}
                             />
 
-                            <div className="absolute right-3 flex items-center gap-1">
+                            <div className="absolute right-3 flex items-center gap-1.5">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setShowGifPicker(!showGifPicker);
                                         setShowEmojiPicker(false);
                                     }}
-                                    className={`p-1.5 transition-all rounded-lg ${showGifPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                    className={`p-2 transition-all rounded-lg ${showGifPicker ? 'text-accent bg-accent/10' : 'text-muted hover:text-primary hover:bg-surface'}`}
                                     title="Search GIFs"
                                 >
-                                    <ImageIcon size={20} strokeWidth={2.5} />
+                                    <ImageIcon size={20} strokeWidth={2} />
                                 </button>
                                 <button
                                     type="button"
@@ -662,20 +677,20 @@ export default function Chat({ socket }) {
                                         setShowEmojiPicker(!showEmojiPicker);
                                         setShowGifPicker(false);
                                     }}
-                                    className={`p-1.5 transition-all rounded-lg ${showEmojiPicker ? 'text-white bg-[#111]' : 'text-[#444] hover:text-white hover:bg-[#111]'}`}
+                                    className={`p-2 transition-all rounded-lg ${showEmojiPicker ? 'text-accent bg-accent/10' : 'text-muted hover:text-primary hover:bg-surface'}`}
                                 >
-                                    <Smile size={20} strokeWidth={2.5} />
+                                    <Smile size={20} strokeWidth={2} />
                                 </button>
 
                                 {input.trim() && (
                                     <motion.button
                                         initial={{ scale: 0, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
                                         type="submit"
-                                        className="p-1.5 transition-colors"
-                                        style={{ color: currentTopic?.accent_color || '#3b82f6' }}
+                                        className="p-2 bg-gradient-to-br from-accent to-accent-hover text-white rounded-lg hover:shadow-glow-sm transition-all btn-press"
                                     >
-                                        <Send size={18} fill="currentColor" strokeWidth={3} />
+                                        <Send size={18} fill="currentColor" strokeWidth={0} />
                                     </motion.button>
                                 )}
                             </div>

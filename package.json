@@ -6,5 +6,8 @@
         "build:client": "cd client && npm run build",
         "start:server": "cd server && node index.js",
         "build": "npm run install:all && npm run build:client"
+    },
+    "dependencies": {
+        "docker": "^1.0.0"
     }
 }
